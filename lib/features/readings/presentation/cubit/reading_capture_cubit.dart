@@ -2,10 +2,12 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/calculation_engine/consumption_calculator.dart';
+import '../../../../core/calculation_engine/date_math.dart';
 import '../../../../core/error/result.dart';
 import '../../../../core/services/file_storage_service.dart';
 import '../../../../core/services/image_capture_service.dart';
 import '../../../../core/services/permission_service.dart';
+import '../../../billing_cycles/domain/repositories/billing_cycle_repository.dart';
 import '../../../meters/domain/entities/meter.dart';
 import '../../data/datasources/ocr_datasource.dart';
 import '../../domain/entities/reading.dart';
@@ -99,12 +101,14 @@ class ReadingCaptureCubit extends Cubit<ReadingCaptureState> {
     required OcrDatasource ocrDatasource,
     required AddReading addReading,
     required ReadingRepository readingRepository,
+    required BillingCycleRepository cycleRepository,
   })  : _permissions = permissionService,
         _capture = imageCaptureService,
         _storage = fileStorageService,
         _ocr = ocrDatasource,
         _addReading = addReading,
         _readings = readingRepository,
+        _cycles = cycleRepository,
         super(const ReadingCaptureState());
 
   final PermissionService _permissions;
@@ -113,10 +117,26 @@ class ReadingCaptureCubit extends Cubit<ReadingCaptureState> {
   final OcrDatasource _ocr;
   final AddReading _addReading;
   final ReadingRepository _readings;
+  final BillingCycleRepository _cycles;
 
   late Meter _meter;
 
   void attach(Meter meter) => _meter = meter;
+
+  /// Whether the UI should default the "start a new cycle" toggle to on: true
+  /// only when the current cycle is due (today is on/after its expected reading
+  /// date). Keeps ordinary mid-cycle readings accumulating in one cycle so
+  /// consumption deltas are computed correctly.
+  Future<bool> shouldSuggestNewCycle() async {
+    try {
+      final cycle = await _cycles.getOpenCycle(_meter.id!);
+      final due = cycle?.expectedReadingDate;
+      if (due == null) return false; // no cycle yet, or none scheduled
+      return daysUntil(due, from: DateTime.now()) <= 0;
+    } catch (_) {
+      return false;
+    }
+  }
 
   static const String _cameraFailedMessage =
       'The camera closed unexpectedly. Try again, pick from gallery, or enter '

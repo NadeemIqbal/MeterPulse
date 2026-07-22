@@ -39,19 +39,24 @@ class _CaptureViewState extends State<_CaptureView> {
   final _value = TextEditingController();
   final _notes = TextEditingController();
   DateTime _date = DateTime.now();
-  late bool _startNewCycle;
+  // Off by default so readings accumulate in the current cycle (that's what
+  // produces the per-reading consumption deltas). Auto-suggested on only when
+  // the current cycle is actually due; the user can always override.
+  bool _startNewCycle = false;
   String? _prefilledFor;
 
   @override
   void initState() {
     super.initState();
-    // Sensible default: if we're at/past the reading day, this likely opens a
-    // new cycle. The user can override.
-    _startNewCycle = DateTime.now().day >= widget.meter.expectedReadingDayOfMonth;
-    // If the OS killed us mid-capture last time (e.g. the camera process
-    // crashed), recover the photo instead of losing it.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<ReadingCaptureCubit>().checkForLostImage();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final cubit = context.read<ReadingCaptureCubit>();
+      // If the OS killed us mid-capture last time (e.g. the camera process
+      // crashed), recover the photo instead of losing it.
+      cubit.checkForLostImage();
+      // Default the "new cycle" toggle from whether this cycle is due.
+      final suggest = await cubit.shouldSuggestNewCycle();
+      if (mounted) setState(() => _startNewCycle = suggest);
     });
   }
 

@@ -105,6 +105,7 @@ Future<void> configureDependencies() async {
         ocrDatasource: sl<OcrDatasource>(),
         addReading: sl<AddReading>(),
         readingRepository: sl<ReadingRepository>(),
+        cycleRepository: sl<BillingCycleRepository>(),
       ),
     )
     ..registerFactory<ReadingHistoryCubit>(
