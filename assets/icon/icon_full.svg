@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0E9AA3"/>
+      <stop offset="1" stop-color="#004D52"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="232" fill="url(#bg)"/>
+  <!-- speedometer gauge, opening at the bottom -->
+  <path d="M 300 724 A 300 300 0 1 1 724 724"
+        fill="none" stroke="#FFFFFF" stroke-width="72"
+        stroke-linecap="round"/>
+  <!-- needle pointing to the upper-right (high usage) -->
+  <line x1="512" y1="512" x2="642" y2="300"
+        stroke="#FFFFFF" stroke-width="36" stroke-linecap="round"/>
+  <!-- hub -->
+  <circle cx="512" cy="512" r="50" fill="#FFFFFF"/>
+  <circle cx="512" cy="512" r="22" fill="#004D52"/>
+</svg>

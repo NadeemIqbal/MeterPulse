@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Transparent background; content scaled to ~62% and centred so it fits the
+       adaptive-icon safe zone (the launcher crops to the inner ~66%). -->
+  <g transform="translate(512 512) scale(0.62) translate(-512 -512)">
+    <path d="M 300 724 A 300 300 0 1 1 724 724"
+          fill="none" stroke="#FFFFFF" stroke-width="72"
+          stroke-linecap="round"/>
+    <line x1="512" y1="512" x2="642" y2="300"
+          stroke="#FFFFFF" stroke-width="36" stroke-linecap="round"/>
+    <circle cx="512" cy="512" r="50" fill="#FFFFFF"/>
+    <circle cx="512" cy="512" r="22" fill="#004D52"/>
+  </g>
+</svg>
