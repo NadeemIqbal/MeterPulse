@@ -6,6 +6,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/widgets/app_card.dart';
+import '../../../analytics/presentation/widgets/alert_banner.dart';
 import '../../../meters/presentation/meter_type_ui.dart';
 import '../../domain/entities/meter_summary.dart';
 import '../status_ui.dart';
@@ -48,6 +49,10 @@ class MeterSummaryCard extends StatelessWidget {
                 _header(context, accent),
                 const SizedBox(height: AppSpacing.md),
                 _statusRow(scheme),
+                if (summary.topAlert != null) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  AlertBanner(alert: summary.topAlert!, dense: true),
+                ],
                 const SizedBox(height: AppSpacing.lg),
                 _headlineUsage(context, accent),
                 const SizedBox(height: AppSpacing.lg),
@@ -100,9 +105,15 @@ class MeterSummaryCard extends StatelessWidget {
             ],
           ),
         ),
-        if (summary.highUsageExceeded)
-          Icon(Icons.local_fire_department_rounded,
-              color: theme.colorScheme.error),
+        if (summary.alerts.isNotEmpty)
+          Icon(
+            summary.highUsageExceeded
+                ? Icons.warning_amber_rounded
+                : Icons.info_outline_rounded,
+            color: summary.highUsageExceeded
+                ? theme.colorScheme.error
+                : theme.colorScheme.tertiary,
+          ),
       ],
     );
   }

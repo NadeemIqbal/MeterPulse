@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 
+import '../../../analytics/domain/entities/usage_alert.dart';
 import '../../../bills/domain/entities/bill.dart';
 import '../../../billing_cycles/domain/entities/billing_cycle.dart';
 import '../../../meters/domain/entities/meter.dart';
@@ -29,6 +30,7 @@ class MeterSummary extends Equatable {
     required this.readingStatus,
     required this.billStatus,
     this.highUsageExceeded = false,
+    this.alerts = const [],
   });
 
   final Meter meter;
@@ -54,9 +56,13 @@ class MeterSummary extends Equatable {
   final ReadingStatus readingStatus;
   final BillStatus billStatus;
 
-  /// True when usage or the projection has crossed the configured threshold
-  /// (surfaced as a badge in Phase 1; drives notifications in Phase 2).
+  /// True when usage or the projection has crossed the configured threshold.
   final bool highUsageExceeded;
+
+  /// Rule-based alerts for this meter's current cycle (threshold / spike).
+  final List<UsageAlert> alerts;
+
+  UsageAlert? get topAlert => alerts.isEmpty ? null : alerts.first;
 
   DateTime? get lastReadingDate => currentReading?.readingDate;
   DateTime? get lastBillDate => latestBill?.billDate;
@@ -77,5 +83,6 @@ class MeterSummary extends Equatable {
         readingStatus,
         billStatus,
         highUsageExceeded,
+        alerts,
       ];
 }

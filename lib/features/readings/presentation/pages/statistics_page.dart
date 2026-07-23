@@ -9,13 +9,13 @@ import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../../core/widgets/loading_view.dart';
 import '../../../../core/widgets/stat_tile.dart';
+import '../../../analytics/presentation/widgets/consumption_bar_chart.dart';
+import '../../../analytics/presentation/widgets/reading_trend_chart.dart';
 import '../../../meters/domain/entities/meter.dart';
 import '../../../meters/presentation/meter_type_ui.dart';
-import '../../domain/entities/meter_stats.dart';
 import '../cubit/reading_history_cubit.dart';
 
-/// Aggregate statistics for a meter. Charts arrive in Phase 2; Phase 1 shows the
-/// computed figures.
+/// Aggregate statistics and usage charts for a meter.
 class StatisticsPage extends StatelessWidget {
   const StatisticsPage({super.key, required this.meter});
 
@@ -41,7 +41,7 @@ class StatisticsPage extends StatelessWidget {
                       title: 'Nothing to summarise yet',
                       message: 'Take a few readings to see usage statistics.',
                     )
-                  : _stats(context, state.stats),
+                  : _stats(context, state),
             };
           },
         ),
@@ -49,8 +49,26 @@ class StatisticsPage extends StatelessWidget {
     );
   }
 
-  Widget _stats(BuildContext context, MeterStats stats) {
+  Widget _stats(BuildContext context, ReadingHistoryState state) {
+    final stats = state.stats;
+    final scheme = Theme.of(context).colorScheme;
+    final accent = meter.accent(scheme);
     final unit = meter.unit;
+
+    // Cycles oldest-first for the charts.
+    final cyclesOldestFirst = state.timelines.reversed.toList();
+    final barData = [
+      for (final t in cyclesOldestFirst)
+        (
+          label: Formatters.shortDate(t.cycle.cycleStartDate),
+          value: t.totalUnits ?? 0.0,
+        ),
+    ];
+    final trendValues = [
+      for (final t in cyclesOldestFirst)
+        for (final e in t.entries) e.reading.readingValue,
+    ];
+
     final tiles = <Widget>[
       _tile('Total consumed', Formatters.units(stats.totalUnits), unit),
       _tile('Avg / month', Formatters.units(stats.averageMonthly), unit),
@@ -76,8 +94,23 @@ class StatisticsPage extends StatelessWidget {
           itemCount: tiles.length,
           itemBuilder: (context, index) => tiles[index],
         ),
-        const SizedBox(height: AppSpacing.lg),
-        _chartsComingSoon(context),
+        if (barData.any((d) => d.value > 0)) ...[
+          const SizedBox(height: AppSpacing.lg),
+          _chartCard(
+            context,
+            'Units per cycle',
+            ConsumptionBarChart(data: barData, accent: accent),
+          ),
+        ],
+        if (trendValues.length >= 2) ...[
+          const SizedBox(height: AppSpacing.lg),
+          _chartCard(
+            context,
+            'Reading trend',
+            ReadingTrendChart(values: trendValues, accent: accent),
+          ),
+        ],
+        const SizedBox(height: AppSpacing.xl),
       ],
     );
   }
@@ -88,21 +121,19 @@ class StatisticsPage extends StatelessWidget {
     );
   }
 
-  Widget _chartsComingSoon(BuildContext context) {
+  Widget _chartCard(BuildContext context, String title, Widget chart) {
     final theme = Theme.of(context);
     return AppCard(
-      color: theme.colorScheme.surfaceContainerHighest,
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.show_chart_rounded, color: theme.colorScheme.onSurfaceVariant),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Text(
-              'Usage charts and trends arrive in a future update.',
-              style: theme.textTheme.bodyMedium
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
+          Text(
+            title,
+            style: theme.textTheme.titleSmall
+                ?.copyWith(fontWeight: FontWeight.w600),
           ),
+          const SizedBox(height: AppSpacing.md),
+          chart,
         ],
       ),
     );

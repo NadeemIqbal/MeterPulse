@@ -1,5 +1,6 @@
 import '../../../../core/calculation_engine/consumption_calculator.dart';
 import '../../../../core/calculation_engine/date_math.dart';
+import '../../../analytics/domain/detect_usage_alerts.dart';
 import '../../../bills/domain/entities/bill.dart';
 import '../../../billing_cycles/domain/entities/billing_cycle.dart';
 import '../../../meters/domain/entities/meter.dart';
@@ -45,6 +46,14 @@ class ComputeMeterSummary {
             ? null
             : daysUntil(latestBill!.dueDate!, from: now);
 
+    final alerts = detectUsageAlerts(
+      meter: meter,
+      cycleReadings: cycleReadings,
+      unitsUsed: unitsUsed,
+      projectedMonthEnd: projected,
+      now: now,
+    );
+
     return MeterSummary(
       meter: meter,
       cycle: cycle,
@@ -59,7 +68,8 @@ class ComputeMeterSummary {
       readingCount: readingCount,
       readingStatus: _readingStatus(meter, readingCount, daysUntilReading),
       billStatus: _billStatus(latestBill, daysUntilBill),
-      highUsageExceeded: _highUsage(meter, unitsUsed, projected),
+      highUsageExceeded: alerts.any((a) => a.isHigh),
+      alerts: alerts,
     );
   }
 
@@ -96,9 +106,4 @@ class ComputeMeterSummary {
     return BillStatus.unpaid;
   }
 
-  bool _highUsage(Meter meter, double? unitsUsed, double? projected) {
-    final threshold = meter.highUsageThreshold;
-    if (threshold == null) return false;
-    return (unitsUsed ?? 0) > threshold || (projected ?? 0) > threshold;
-  }
 }

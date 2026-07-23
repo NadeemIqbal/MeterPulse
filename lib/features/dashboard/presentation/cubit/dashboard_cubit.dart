@@ -2,11 +2,13 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/error/result.dart';
+import '../../../../core/services/notification_service.dart';
 import '../../../bills/domain/repositories/bill_repository.dart';
 import '../../../billing_cycles/domain/repositories/billing_cycle_repository.dart';
 import '../../../meters/domain/repositories/meter_repository.dart';
 import '../../../readings/domain/entities/reading.dart';
 import '../../../readings/domain/repositories/reading_repository.dart';
+import '../../../settings/domain/repositories/settings_repository.dart';
 import '../../domain/entities/meter_summary.dart';
 import '../../domain/usecases/compute_meter_summary.dart';
 
@@ -52,11 +54,15 @@ class DashboardCubit extends Cubit<DashboardState> {
     required ReadingRepository readingRepository,
     required BillingCycleRepository cycleRepository,
     required BillRepository billRepository,
+    required SettingsRepository settingsRepository,
+    required NotificationService notificationService,
     ComputeMeterSummary compute = const ComputeMeterSummary(),
   })  : _meters = meterRepository,
         _readings = readingRepository,
         _cycles = cycleRepository,
         _bills = billRepository,
+        _settings = settingsRepository,
+        _notifications = notificationService,
         _compute = compute,
         super(const DashboardState());
 
@@ -64,6 +70,8 @@ class DashboardCubit extends Cubit<DashboardState> {
   final ReadingRepository _readings;
   final BillingCycleRepository _cycles;
   final BillRepository _bills;
+  final SettingsRepository _settings;
+  final NotificationService _notifications;
   final ComputeMeterSummary _compute;
 
   Future<void> load() async {
@@ -72,6 +80,9 @@ class DashboardCubit extends Cubit<DashboardState> {
     switch (result) {
       case Ok(:final value):
         emit(DashboardState(status: DashboardStatus.loaded, summaries: value));
+        // Best-effort: reschedule reminders against the current data. Not
+        // awaited so it never delays the dashboard render.
+        _syncNotifications(value);
       case Err(:final failure):
         emit(DashboardState(
           status: DashboardStatus.error,
@@ -79,6 +90,53 @@ class DashboardCubit extends Cubit<DashboardState> {
         ));
     }
   }
+
+  /// Reschedules reading/bill reminders on app open (the app has no background
+  /// jobs, so this "catch-up" reschedule is how reminders stay current).
+  /// Entirely best-effort — notification failures never affect the dashboard.
+  Future<void> _syncNotifications(List<MeterSummary> summaries) async {
+    try {
+      final settings = await _settings.getSettings();
+      if (!(settings.notificationsEnabled ?? false)) {
+        await _notifications.cancelAll();
+        return;
+      }
+      final minutes = settings.reminderTimeMinutes ?? 8 * 60; // default 8am
+      for (final s in summaries) {
+        final meterId = s.meter.id;
+        if (meterId == null) continue;
+
+        final readingDue = s.cycle?.expectedReadingDate;
+        if (readingDue != null) {
+          await _notifications.scheduleReadingReminder(
+            meterId: meterId,
+            meterName: s.meter.name,
+            when: _at(readingDue, minutes),
+          );
+        }
+
+        final bill = s.latestBill;
+        final billDue = (bill != null && !bill.isPaid) ? bill.dueDate : null;
+        if (billDue != null) {
+          await _notifications.scheduleBillReminder(
+            meterId: meterId,
+            meterName: s.meter.name,
+            when: _at(billDue, minutes),
+          );
+        }
+      }
+    } catch (_) {
+      // Notifications are best-effort.
+    }
+  }
+
+  DateTime _at(DateTime date, int minutesFromMidnight) => DateTime(
+        date.year,
+        date.month,
+        date.day,
+        minutesFromMidnight ~/ 60,
+        minutesFromMidnight % 60,
+      );
 
   Future<List<MeterSummary>> _buildSummaries() async {
     final meters = await _meters.getMeters();

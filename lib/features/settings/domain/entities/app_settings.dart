@@ -18,12 +18,17 @@ class AppSettings extends Equatable {
   final int? reminderTimeMinutes;
   final String? notificationSound;
 
-  AppSettings copyWith({AppThemeMode? themeMode}) {
+  AppSettings copyWith({
+    AppThemeMode? themeMode,
+    bool? notificationsEnabled,
+    int? reminderTimeMinutes,
+    String? notificationSound,
+  }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
-      notificationsEnabled: notificationsEnabled,
-      reminderTimeMinutes: reminderTimeMinutes,
-      notificationSound: notificationSound,
+      notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
+      reminderTimeMinutes: reminderTimeMinutes ?? this.reminderTimeMinutes,
+      notificationSound: notificationSound ?? this.notificationSound,
     );
   }
 

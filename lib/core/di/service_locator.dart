@@ -1,3 +1,4 @@
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:isar_community/isar.dart';
@@ -22,10 +23,12 @@ import '../../features/readings/presentation/cubit/reading_capture_cubit.dart';
 import '../../features/readings/presentation/cubit/reading_history_cubit.dart';
 import '../../features/settings/data/repositories/settings_repository_impl.dart';
 import '../../features/settings/domain/repositories/settings_repository.dart';
+import '../../features/settings/presentation/cubit/settings_cubit.dart';
 import '../../features/settings/presentation/cubit/theme_cubit.dart';
 import '../database/isar_service.dart';
 import '../services/file_storage_service.dart';
 import '../services/image_capture_service.dart';
+import '../services/notification_service.dart';
 import '../services/permission_service.dart';
 
 /// Global service locator. Registration order is:
@@ -48,7 +51,13 @@ Future<void> configureDependencies() async {
     ..registerLazySingleton<ImageCaptureService>(
       () => ImageCaptureService(sl<ImagePicker>()),
     )
-    ..registerLazySingleton<OcrDatasource>(OcrDatasource.new);
+    ..registerLazySingleton<OcrDatasource>(OcrDatasource.new)
+    ..registerLazySingleton<FlutterLocalNotificationsPlugin>(
+      FlutterLocalNotificationsPlugin.new,
+    )
+    ..registerLazySingleton<NotificationService>(
+      () => NotificationService(sl<FlutterLocalNotificationsPlugin>()),
+    );
 
   // --- Repositories ---
   sl
@@ -80,6 +89,9 @@ Future<void> configureDependencies() async {
   sl.registerLazySingleton<ThemeCubit>(
     () => ThemeCubit(sl<SettingsRepository>()),
   );
+  sl.registerFactory<SettingsCubit>(
+    () => SettingsCubit(sl<SettingsRepository>(), sl<NotificationService>()),
+  );
   // Screen-scoped cubits → new instance each time they're requested.
   sl
     ..registerFactory<MeterListCubit>(
@@ -94,6 +106,8 @@ Future<void> configureDependencies() async {
         readingRepository: sl<ReadingRepository>(),
         cycleRepository: sl<BillingCycleRepository>(),
         billRepository: sl<BillRepository>(),
+        settingsRepository: sl<SettingsRepository>(),
+        notificationService: sl<NotificationService>(),
         compute: sl<ComputeMeterSummary>(),
       ),
     )
