@@ -28,22 +28,24 @@ MeterPulse is built around exactly that workflow.
 
 ---
 
-## Features (Phase 1 — shipped)
+## Features
 
 - **Meters** — add unlimited meters (electricity / gas / water / other), each with a name, meter number, unit, reading day-of-month, optional rollover/max value, a custom accent colour, and a high-usage threshold. Mark meters active/inactive (so my unmonitored 5th meter stays out of the way without being deleted).
 - **OCR-assisted readings** — photograph the meter → on-device Google ML Kit extracts the longest numeric sequence → you confirm/edit the value. Falls back to **gallery pick** or **manual entry**, and warns when a reading is lower than the last one (meter reset vs. typo).
 - **Consumption timeline** — every reading in a cycle with the units consumed since the previous one, computed automatically.
 - **Dashboard** — one card per active meter: units used this cycle, avg/day, projected month-end, reading & bill status, days until next reading/bill, quick actions.
 - **Bills** — manual entry (amount, date, due date, units billed, paid status) with an optional photo of the paper bill.
-- **Statistics** — total consumed, average monthly/yearly, highest/lowest reading, cycles tracked.
+- **Statistics & charts** — total consumed, average monthly/yearly, highest/lowest reading, cycles tracked, plus a per-cycle **units bar chart** and a **reading-trend line chart** (fl_chart).
+- **Smart alerts** — rule-based, on-device: high-usage (over your threshold), on-track-to-exceed (projection), and usage-spike (recent day-rate well above the cycle average) — shown as dashboard banners.
+- **Reminders** — optional local notifications for readings and bills due, at a time you choose, rescheduled on app open (no background service). Android 13+ permission handled; a "send test notification" action is included.
+- **Export & backup** — export all readings and bills to **CSV** via the share sheet; **back up** the database to a file and **restore** it later (records only — photos aren't included).
 - **Automatic billing cycles** — a new cycle starts when you take a cycle-opening reading; the previous cycle becomes read-only. No background jobs required.
 - **Material You design** — dynamic colour (Android 12+) with a seed fallback, light/dark/system themes, rounded cards, shimmer loading, empty & error states, and shared-element transitions.
 
 ## Roadmap
 
-- **Phase 2** — reading & bill reminders (local notifications), rule-based high-usage / abnormal-spike alerts, and usage charts (fl_chart).
-- **Phase 3** — CSV export and local database backup/restore.
-- **Later** — automatic OCR of bills; optional cloud sync (the repository layer is already abstracted for it).
+- **Automatic OCR of bills** — read the amount/units off a bill photo (readings already use OCR).
+- **Cloud sync** — optional; the repository layer is already abstracted for it.
 
 ---
 
@@ -63,7 +65,8 @@ lib/
     di/                   # get_it service locator
     error/ · utils/
   features/
-    meters/ · readings/ · bills/ · billing_cycles/ · dashboard/ · settings/
+    meters/ · readings/ · bills/ · billing_cycles/ · dashboard/
+    analytics/ · export/ · backup/ · settings/
 test/
   core/calculation_engine/   # 47 unit tests
 ```
@@ -82,9 +85,12 @@ test/
 | Routing | `go_router` |
 | Database | `isar_community`, `isar_community_flutter_libs` |
 | OCR | `google_mlkit_text_recognition` (on-device) |
+| Charts | `fl_chart` |
+| Notifications | `flutter_local_notifications`, `timezone` |
+| Export / backup | `csv`, `share_plus`, `file_picker` |
 | Camera / images | `camera`, `image_picker`, `path_provider` |
 | DI | `get_it` |
-| Misc | `permission_handler`, `intl`, `uuid`, `fl_chart` (Phase 2) |
+| Misc | `permission_handler`, `intl`, `uuid` |
 
 ---
 

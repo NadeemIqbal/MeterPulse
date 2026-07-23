@@ -6,6 +6,8 @@ import '../../../../app/router/route_names.dart';
 import '../../../../core/di/service_locator.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/app_card.dart';
+import '../../../backup/data/backup_service.dart';
+import '../../../export/data/export_service.dart';
 import '../../domain/entities/app_settings.dart';
 import '../../domain/entities/app_theme_mode.dart';
 import '../app_theme_mode_x.dart';
@@ -35,8 +37,8 @@ class SettingsPage extends StatelessWidget {
             _sectionLabel(context, 'General'),
             _generalCard(context),
             const SizedBox(height: AppSpacing.lg),
-            _sectionLabel(context, 'Coming soon'),
-            _comingSoonCard(),
+            _sectionLabel(context, 'Data'),
+            const _DataCard(),
           ],
         ),
       ),
@@ -90,25 +92,6 @@ class SettingsPage extends StatelessWidget {
             title: const Text('About MeterPulse'),
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: () => context.push(RouteNames.about),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _comingSoonCard() {
-    return const AppCard(
-      padding: EdgeInsets.zero,
-      child: Column(
-        children: [
-          _ComingSoonTile(
-            icon: Icons.file_download_rounded,
-            title: 'Export to CSV',
-          ),
-          Divider(height: 1),
-          _ComingSoonTile(
-            icon: Icons.backup_rounded,
-            title: 'Backup & restore',
           ),
         ],
       ),
@@ -192,26 +175,119 @@ class _NotificationsCard extends StatelessWidget {
   }
 }
 
-class _ComingSoonTile extends StatelessWidget {
-  const _ComingSoonTile({required this.icon, required this.title});
-
-  final IconData icon;
-  final String title;
+class _DataCard extends StatelessWidget {
+  const _DataCard();
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return ListTile(
-      enabled: false,
-      leading: Icon(icon, color: scheme.onSurfaceVariant),
-      title: Text(title),
-      trailing: Text(
-        'Soon',
-        style: Theme.of(context)
-            .textTheme
-            .labelSmall
-            ?.copyWith(color: scheme.onSurfaceVariant),
+    return AppCard(
+      padding: EdgeInsets.zero,
+      child: Column(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.file_download_rounded),
+            title: const Text('Export to CSV'),
+            subtitle: const Text('Share readings & bills as CSV files'),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => _export(context),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.backup_rounded),
+            title: const Text('Back up data'),
+            subtitle: const Text('Save a database backup (photos not included)'),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => _backup(context),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.restore_rounded),
+            title: const Text('Restore from backup'),
+            subtitle: const Text('Replace all data from a backup file'),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => _restore(context),
+          ),
+        ],
       ),
     );
+  }
+
+  Future<void> _export(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await sl<ExportService>().exportAll();
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not export data.')),
+      );
+    }
+  }
+
+  Future<void> _backup(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await sl<BackupService>().backup();
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not create a backup.')),
+      );
+    }
+  }
+
+  Future<void> _restore(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Restore from backup?'),
+        content: const Text(
+          'This replaces all current meters, readings and bills with the '
+          'backup. Photos are not restored. This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Choose file'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final staged = await sl<BackupService>().stageRestore();
+      if (!context.mounted) return;
+      if (!staged) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('No backup file selected.')),
+        );
+        return;
+      }
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Restart to finish'),
+          content: const Text(
+            'Your backup will be restored the next time you open MeterPulse. '
+            'Please fully close and reopen the app.',
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not restore the backup.')),
+      );
+    }
   }
 }

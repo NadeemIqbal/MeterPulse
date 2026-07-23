@@ -7,8 +7,10 @@ import '../../features/bills/data/repositories/bill_repository_impl.dart';
 import '../../features/bills/domain/repositories/bill_repository.dart';
 import '../../features/bills/presentation/cubit/bill_cubit.dart';
 import '../../features/bills/presentation/cubit/bill_form_cubit.dart';
+import '../../features/backup/data/backup_service.dart';
 import '../../features/billing_cycles/data/repositories/billing_cycle_repository_impl.dart';
 import '../../features/billing_cycles/domain/repositories/billing_cycle_repository.dart';
+import '../../features/export/data/export_service.dart';
 import '../../features/dashboard/domain/usecases/compute_meter_summary.dart';
 import '../../features/dashboard/presentation/cubit/dashboard_cubit.dart';
 import '../../features/meters/data/repositories/meter_repository_impl.dart';
@@ -83,6 +85,18 @@ Future<void> configureDependencies() async {
       () => AddReading(sl<ReadingRepository>(), sl<BillingCycleRepository>()),
     )
     ..registerLazySingleton<ComputeMeterSummary>(ComputeMeterSummary.new);
+
+  // --- Export / backup services ---
+  sl
+    ..registerLazySingleton<ExportService>(
+      () => ExportService(
+        meterRepository: sl<MeterRepository>(),
+        readingRepository: sl<ReadingRepository>(),
+        cycleRepository: sl<BillingCycleRepository>(),
+        billRepository: sl<BillRepository>(),
+      ),
+    )
+    ..registerLazySingleton<BackupService>(() => BackupService(sl<Isar>()));
 
   // --- Cubits ---
   // ThemeCubit is app-global (sits above MaterialApp) → singleton.

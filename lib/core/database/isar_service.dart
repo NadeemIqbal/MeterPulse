@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:isar_community/isar.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -23,12 +25,35 @@ class IsarService {
     AppSettingsModelSchema,
   ];
 
-  /// Opens (or reuses) the Isar instance in the app documents directory.
+  /// Filename a staged restore is written to (see BackupService). Applied here
+  /// at startup before the database is opened.
+  static const String pendingRestoreName = 'restore_pending.isar';
+
+  /// Opens (or reuses) the Isar instance in the app documents directory,
+  /// applying any staged restore first.
   static Future<Isar> open() async {
     final existing = Isar.getInstance();
     if (existing != null) return existing;
 
     final dir = await getApplicationDocumentsDirectory();
+    await _applyPendingRestore(dir.path);
     return Isar.open(schemas, directory: dir.path);
+  }
+
+  /// If a restore was staged, swap it into place before opening. Done at
+  /// startup so the live database is never replaced mid-session.
+  static Future<void> _applyPendingRestore(String dirPath) async {
+    final staged = File('$dirPath/$pendingRestoreName');
+    if (!await staged.exists()) return;
+
+    final target = File('$dirPath/default.isar');
+    final lock = File('$dirPath/default.isar.lock');
+    try {
+      if (await target.exists()) await target.delete();
+      if (await lock.exists()) await lock.delete();
+      await staged.copy(target.path);
+    } finally {
+      if (await staged.exists()) await staged.delete();
+    }
   }
 }
