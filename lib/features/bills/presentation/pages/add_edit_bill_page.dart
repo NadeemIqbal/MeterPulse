@@ -14,6 +14,9 @@ import '../../../../core/utils/formatters.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../meters/domain/entities/meter.dart';
 import '../../../readings/data/datasources/ocr_datasource.dart';
+import '../../../readings/domain/entities/reading.dart';
+import '../../../readings/domain/repositories/reading_repository.dart';
+import '../../../readings/domain/usecases/add_reading.dart';
 import '../../domain/entities/bill.dart';
 import '../../domain/repositories/bill_repository.dart';
 import '../cubit/bill_form_cubit.dart';
@@ -387,9 +390,35 @@ class _BillFormState extends State<_BillForm> {
       createdAt: existing?.createdAt ?? DateTime.now(),
     );
 
+    final unitsBilled = _parse(_units.text);
+
+    if (unitsBilled != null && unitsBilled > 0) {
+      try {
+        final readingRepo = sl<ReadingRepository>();
+        final readings = await readingRepo.getReadingsForMeter(widget.meter.id!);
+        final exists = readings.any((r) =>
+            r.readingDate.year == _billDate.year &&
+            r.readingDate.month == _billDate.month &&
+            r.readingDate.day == _billDate.day);
+        if (!exists) {
+          await sl<AddReading>()(
+            reading: Reading(
+              meterId: widget.meter.id!,
+              readingValue: unitsBilled,
+              readingDate: _billDate,
+              notes: 'Bill reading for ${Formatters.date(_billDate)}',
+              createdAt: DateTime.now(),
+            ),
+            meter: widget.meter,
+          );
+        }
+      } catch (_) {}
+    }
+
     if (!mounted) return;
     await context.read<BillFormCubit>().save(bill);
   }
+
 
   Future<bool?> _showDuplicateBillDialog(BuildContext context, Bill existing) {
     final monthName = Formatters.monthYear(_billDate);

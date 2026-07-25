@@ -44,6 +44,17 @@ class ComputeMeterSummary {
         rolloverMax: meter.rolloverValue,
       ).units;
     }
+    if ((unitsUsed == null || unitsUsed == 0) &&
+        current != null &&
+        latestBill?.unitsBilled != null &&
+        current.readingValue != latestBill!.unitsBilled) {
+      unitsUsed = unitsConsumed(
+        current.readingValue,
+        latestBill.unitsBilled!,
+        rolloverMax: meter.rolloverValue,
+      ).units;
+    }
+
 
 
     final avgPerDay = _averagePerDay(baseline ?? previous, current, unitsUsed);

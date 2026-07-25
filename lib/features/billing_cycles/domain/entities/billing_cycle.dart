@@ -27,6 +27,7 @@ class BillingCycle extends Equatable {
 
   BillingCycle copyWith({
     int? id,
+    DateTime? cycleStartDate,
     DateTime? cycleEndDate,
     int? startReadingId,
     int? endReadingId,
@@ -36,7 +37,7 @@ class BillingCycle extends Equatable {
     return BillingCycle(
       id: id ?? this.id,
       meterId: meterId,
-      cycleStartDate: cycleStartDate,
+      cycleStartDate: cycleStartDate ?? this.cycleStartDate,
       cycleEndDate: cycleEndDate ?? this.cycleEndDate,
       startReadingId: startReadingId ?? this.startReadingId,
       endReadingId: endReadingId ?? this.endReadingId,
@@ -45,6 +46,7 @@ class BillingCycle extends Equatable {
       createdAt: createdAt,
     );
   }
+
 
   @override
   List<Object?> get props => [

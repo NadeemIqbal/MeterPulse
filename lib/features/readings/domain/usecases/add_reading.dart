@@ -44,10 +44,21 @@ class AddReading {
       // Mid-cycle reading.
       final id =
           await _readings.saveReading(reading.copyWith(billingCycleId: open.id));
-      if (open.startReadingId == null) {
-        await _cycles.saveCycle(open.copyWith(startReadingId: id));
+      var updatedCycle = open;
+      if (open.startReadingId == null ||
+          reading.readingDate.isBefore(open.cycleStartDate)) {
+        updatedCycle = updatedCycle.copyWith(
+          startReadingId: id,
+          cycleStartDate: reading.readingDate,
+          expectedReadingDate: nextReadingDate(
+            meter.expectedReadingDayOfMonth,
+            from: reading.readingDate,
+          ),
+        );
       }
+      await _cycles.saveCycle(updatedCycle);
       return id;
+
     });
   }
 
