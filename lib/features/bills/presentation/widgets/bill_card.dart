@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_spacing.dart';
@@ -30,7 +32,7 @@ class BillCard extends StatelessWidget {
     final accent = bill.isPaid ? paidColor : scheme.primary;
 
     return AppCard(
-      onTap: onEdit,
+      onTap: () => _showBillDetailsModal(context),
       child: Row(
         children: [
           CircleAvatar(
@@ -68,6 +70,8 @@ class BillCard extends StatelessWidget {
           PopupMenuButton<String>(
             onSelected: (value) {
               switch (value) {
+                case 'view':
+                  _showBillDetailsModal(context);
                 case 'edit':
                   onEdit?.call();
                 case 'paid':
@@ -77,6 +81,7 @@ class BillCard extends StatelessWidget {
               }
             },
             itemBuilder: (context) => [
+              const PopupMenuItem(value: 'view', child: Text('View details')),
               const PopupMenuItem(value: 'edit', child: Text('Edit')),
               PopupMenuItem(
                 value: 'paid',
@@ -87,6 +92,116 @@ class BillCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  void _showBillDetailsModal(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.card)),
+      ),
+      builder: (sheetContext) {
+        return Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Bill Details',
+                    style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                      vertical: AppSpacing.xxs,
+                    ),
+                    decoration: BoxDecoration(
+                      color: (bill.isPaid ? const Color(0xFF2E7D32) : scheme.primary)
+                          .withValues(alpha: 0.14),
+                      borderRadius: const BorderRadius.all(Radius.circular(AppRadius.chip)),
+                    ),
+                    child: Text(
+                      bill.isPaid ? 'Paid' : 'Unpaid',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: bill.isPaid ? const Color(0xFF2E7D32) : scheme.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                Formatters.currency(bill.billAmount),
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: scheme.primary,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text('Billed Date: ${Formatters.date(bill.billDate)}',
+                  style: theme.textTheme.bodyMedium),
+              if (bill.dueDate != null)
+                Text('Due Date: ${Formatters.date(bill.dueDate!)}',
+                    style: theme.textTheme.bodyMedium),
+              if (bill.unitsBilled != null)
+                Text('Units Billed: ${Formatters.units(bill.unitsBilled)} $unit',
+                    style: theme.textTheme.bodyMedium),
+              if (bill.notes != null && bill.notes!.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Text('Notes: ${bill.notes}', style: theme.textTheme.bodySmall),
+              ],
+              if (bill.photoPath != null && File(bill.photoPath!).existsSync()) ...[
+                const SizedBox(height: AppSpacing.md),
+                ClipRRect(
+                  borderRadius: const BorderRadius.all(Radius.circular(AppRadius.card)),
+                  child: Image.file(
+                    File(bill.photoPath!),
+                    height: 200,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ],
+              const SizedBox(height: AppSpacing.xl),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(sheetContext);
+                        onEdit?.call();
+                      },
+                      icon: const Icon(Icons.edit_rounded),
+                      label: const Text('Edit Bill'),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () {
+                        Navigator.pop(sheetContext);
+                        onTogglePaid?.call();
+                      },
+                      icon: Icon(bill.isPaid ? Icons.remove_done_rounded : Icons.check_rounded),
+                      label: Text(bill.isPaid ? 'Mark Unpaid' : 'Mark Paid'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -103,3 +218,4 @@ class BillCard extends StatelessWidget {
     return parts.join(' · ');
   }
 }
+

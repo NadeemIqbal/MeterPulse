@@ -20,9 +20,16 @@ class MeterRepositoryImpl implements MeterRepository {
         .where((m) => includeInactive || m.isActive)
         .map(_toEntity)
         .toList();
-    // Active first, then alphabetical — the dashboard order.
+    // Active first, then custom sortOrder (if set), then alphabetical.
     meters.sort((a, b) {
       if (a.isActive != b.isActive) return a.isActive ? -1 : 1;
+      if (a.sortOrder != null && b.sortOrder != null) {
+        return a.sortOrder!.compareTo(b.sortOrder!);
+      } else if (a.sortOrder != null) {
+        return -1;
+      } else if (b.sortOrder != null) {
+        return 1;
+      }
       return a.name.toLowerCase().compareTo(b.name.toLowerCase());
     });
     return meters;
@@ -50,6 +57,19 @@ class MeterRepositoryImpl implements MeterRepository {
   }
 
   @override
+  Future<void> updateMeterOrders(List<int> orderedMeterIds) {
+    return _isar.writeTxn(() async {
+      for (var i = 0; i < orderedMeterIds.length; i++) {
+        final model = await _isar.meterModels.get(orderedMeterIds[i]);
+        if (model != null) {
+          model.sortOrder = i;
+          await _isar.meterModels.put(model);
+        }
+      }
+    });
+  }
+
+  @override
   Future<void> deleteMeter(int id) {
     // Cascade: a meter's readings, bills and cycles are meaningless without it,
     // so purge them atomically in the same transaction.
@@ -73,6 +93,7 @@ class MeterRepositoryImpl implements MeterRepository {
     ..colorValue = m.colorValue
     ..iconCodePoint = m.iconCodePoint
     ..notes = m.notes
+    ..sortOrder = m.sortOrder
     ..highUsageThreshold = m.highUsageThreshold
     ..expectedMonthlyUnits = m.expectedMonthlyUnits
     ..reminderStartDaysBefore = m.reminderStartDaysBefore
@@ -92,6 +113,7 @@ class MeterRepositoryImpl implements MeterRepository {
         colorValue: m.colorValue,
         iconCodePoint: m.iconCodePoint,
         notes: m.notes,
+        sortOrder: m.sortOrder,
         highUsageThreshold: m.highUsageThreshold,
         expectedMonthlyUnits: m.expectedMonthlyUnits,
         reminderStartDaysBefore: m.reminderStartDaysBefore,

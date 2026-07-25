@@ -91,6 +91,23 @@ class DashboardCubit extends Cubit<DashboardState> {
     }
   }
 
+  /// Reorders meter cards on the dashboard and persists the updated order.
+  Future<void> reorderSummaries(int oldIndex, int newIndex) async {
+    if (state.status != DashboardStatus.loaded) return;
+    final list = List<MeterSummary>.from(state.summaries);
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+    final item = list.removeAt(oldIndex);
+    list.insert(newIndex, item);
+
+    emit(DashboardState(status: DashboardStatus.loaded, summaries: list));
+
+    final orderedIds =
+        list.map((s) => s.meter.id).whereType<int>().toList();
+    await _meters.updateMeterOrders(orderedIds);
+  }
+
   /// Reschedules reading/bill reminders on app open (the app has no background
   /// jobs, so this "catch-up" reschedule is how reminders stay current).
   /// Entirely best-effort — notification failures never affect the dashboard.
@@ -148,6 +165,15 @@ class DashboardCubit extends Cubit<DashboardState> {
           ? const <Reading>[]
           : await _readings.getReadingsForCycle(cycle.id!);
       final latestBill = await _bills.getLatestBill(meter.id!);
+
+      Reading? previousOverride;
+      if (cycleReadings.length < 2) {
+        final allReadings = await _readings.getReadingsForMeter(meter.id!);
+        if (allReadings.length > cycleReadings.length) {
+          previousOverride = allReadings[cycleReadings.length];
+        }
+      }
+
       summaries.add(
         _compute(
           meter: meter,
@@ -155,9 +181,11 @@ class DashboardCubit extends Cubit<DashboardState> {
           cycleReadings: cycleReadings,
           latestBill: latestBill,
           now: now,
+          previousReadingOverride: previousOverride,
         ),
       );
     }
     return summaries;
   }
+
 }

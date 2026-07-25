@@ -6,12 +6,14 @@ import 'app_theme_mode.dart';
 class AppSettings extends Equatable {
   const AppSettings({
     this.themeMode = AppThemeMode.system,
+    this.currencySymbol = 'PKR',
     this.notificationsEnabled,
     this.reminderTimeMinutes,
     this.notificationSound,
   });
 
   final AppThemeMode themeMode;
+  final String currencySymbol;
 
   // Phase 2 preferences.
   final bool? notificationsEnabled;
@@ -20,12 +22,14 @@ class AppSettings extends Equatable {
 
   AppSettings copyWith({
     AppThemeMode? themeMode,
+    String? currencySymbol,
     bool? notificationsEnabled,
     int? reminderTimeMinutes,
     String? notificationSound,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
+      currencySymbol: currencySymbol ?? this.currencySymbol,
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       reminderTimeMinutes: reminderTimeMinutes ?? this.reminderTimeMinutes,
       notificationSound: notificationSound ?? this.notificationSound,
@@ -35,8 +39,10 @@ class AppSettings extends Equatable {
   @override
   List<Object?> get props => [
         themeMode,
+        currencySymbol,
         notificationsEnabled,
         reminderTimeMinutes,
         notificationSound,
       ];
 }
+

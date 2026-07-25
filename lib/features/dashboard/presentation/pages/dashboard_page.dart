@@ -115,46 +115,36 @@ class _DashboardViewState extends State<_DashboardView>
   }
 
   Widget _content(BuildContext context, DashboardState state) {
+    final summaries = state.summaries;
+
     return RefreshIndicator(
       onRefresh: () => context.read<DashboardCubit>().load(),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final twoColumns = constraints.maxWidth >= 640;
-          final cards = state.summaries
-              .map((s) => MeterSummaryCard(summary: s, onChanged: _reload))
-              .toList();
-
-          return ListView(
-            padding: AppSpacing.page,
-            children: [
-              _OverviewStrip(state: state),
-              const SizedBox(height: AppSpacing.lg),
-              if (twoColumns)
-                _grid(cards)
-              else
-                ...cards.expand(
-                  (c) => [c, const SizedBox(height: AppSpacing.md)],
-                ),
-              const SizedBox(height: 80), // clear the FAB
-            ],
+      child: ReorderableListView.builder(
+        padding: AppSpacing.page,
+        header: Column(
+          children: [
+            _OverviewStrip(state: state),
+            const SizedBox(height: AppSpacing.lg),
+          ],
+        ),
+        footer: const SizedBox(height: 80), // clear the FAB
+        itemCount: summaries.length,
+        onReorder: (oldIndex, newIndex) {
+          context.read<DashboardCubit>().reorderSummaries(oldIndex, newIndex);
+        },
+        itemBuilder: (context, index) {
+          final summary = summaries[index];
+          return Padding(
+            key: ValueKey('meter-card-${summary.meter.id}'),
+            padding: const EdgeInsets.only(bottom: AppSpacing.md),
+            child: MeterSummaryCard(
+              summary: summary,
+              onChanged: _reload,
+              index: index,
+            ),
           );
         },
       ),
-    );
-  }
-
-  Widget _grid(List<Widget> cards) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 460,
-        mainAxisExtent: 340,
-        crossAxisSpacing: AppSpacing.md,
-        mainAxisSpacing: AppSpacing.md,
-      ),
-      itemCount: cards.length,
-      itemBuilder: (context, index) => cards[index],
     );
   }
 }

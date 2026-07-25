@@ -75,13 +75,18 @@ const MeterModelSchema = CollectionSchema(
       name: r'rolloverValue',
       type: IsarType.double,
     ),
-    r'type': PropertySchema(
+    r'sortOrder': PropertySchema(
       id: 14,
+      name: r'sortOrder',
+      type: IsarType.long,
+    ),
+    r'type': PropertySchema(
+      id: 15,
       name: r'type',
       type: IsarType.string,
       enumMap: _MeterModeltypeEnumValueMap,
     ),
-    r'unit': PropertySchema(id: 15, name: r'unit', type: IsarType.string),
+    r'unit': PropertySchema(id: 16, name: r'unit', type: IsarType.string),
   },
 
   estimateSize: _meterModelEstimateSize,
@@ -98,6 +103,19 @@ const MeterModelSchema = CollectionSchema(
       properties: [
         IndexPropertySchema(
           name: r'isActive',
+          type: IndexType.value,
+          caseSensitive: false,
+        ),
+      ],
+    ),
+    r'sortOrder': IndexSchema(
+      id: -1119549396205841918,
+      name: r'sortOrder',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'sortOrder',
           type: IndexType.value,
           caseSensitive: false,
         ),
@@ -157,8 +175,9 @@ void _meterModelSerialize(
   writer.writeLong(offsets[11], object.reminderFrequencyDays);
   writer.writeLong(offsets[12], object.reminderStartDaysBefore);
   writer.writeDouble(offsets[13], object.rolloverValue);
-  writer.writeString(offsets[14], object.type.name);
-  writer.writeString(offsets[15], object.unit);
+  writer.writeLong(offsets[14], object.sortOrder);
+  writer.writeString(offsets[15], object.type.name);
+  writer.writeString(offsets[16], object.unit);
 }
 
 MeterModel _meterModelDeserialize(
@@ -183,10 +202,11 @@ MeterModel _meterModelDeserialize(
   object.reminderFrequencyDays = reader.readLongOrNull(offsets[11]);
   object.reminderStartDaysBefore = reader.readLongOrNull(offsets[12]);
   object.rolloverValue = reader.readDoubleOrNull(offsets[13]);
+  object.sortOrder = reader.readLongOrNull(offsets[14]);
   object.type =
-      _MeterModeltypeValueEnumMap[reader.readStringOrNull(offsets[14])] ??
+      _MeterModeltypeValueEnumMap[reader.readStringOrNull(offsets[15])] ??
       MeterType.electricity;
-  object.unit = reader.readString(offsets[15]);
+  object.unit = reader.readString(offsets[16]);
   return object;
 }
 
@@ -226,10 +246,12 @@ P _meterModelDeserializeProp<P>(
     case 13:
       return (reader.readDoubleOrNull(offset)) as P;
     case 14:
+      return (reader.readLongOrNull(offset)) as P;
+    case 15:
       return (_MeterModeltypeValueEnumMap[reader.readStringOrNull(offset)] ??
               MeterType.electricity)
           as P;
-    case 15:
+    case 16:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -273,6 +295,14 @@ extension MeterModelQueryWhereSort
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
         const IndexWhereClause.any(indexName: r'isActive'),
+      );
+    });
+  }
+
+  QueryBuilder<MeterModel, MeterModel, QAfterWhere> anySortOrder() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(
+        const IndexWhereClause.any(indexName: r'sortOrder'),
       );
     });
   }
@@ -399,6 +429,132 @@ extension MeterModelQueryWhere
               ),
             );
       }
+    });
+  }
+
+  QueryBuilder<MeterModel, MeterModel, QAfterWhereClause> sortOrderIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(
+        IndexWhereClause.equalTo(indexName: r'sortOrder', value: [null]),
+      );
+    });
+  }
+
+  QueryBuilder<MeterModel, MeterModel, QAfterWhereClause> sortOrderIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(
+        IndexWhereClause.between(
+          indexName: r'sortOrder',
+          lower: [null],
+          includeLower: false,
+          upper: [],
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<MeterModel, MeterModel, QAfterWhereClause> sortOrderEqualTo(
+    int? sortOrder,
+  ) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(
+        IndexWhereClause.equalTo(indexName: r'sortOrder', value: [sortOrder]),
+      );
+    });
+  }
+
+  QueryBuilder<MeterModel, MeterModel, QAfterWhereClause> sortOrderNotEqualTo(
+    int? sortOrder,
+  ) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'sortOrder',
+                lower: [],
+                upper: [sortOrder],
+                includeUpper: false,
+              ),
+            )
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'sortOrder',
+                lower: [sortOrder],
+                includeLower: false,
+                upper: [],
+              ),
+            );
+      } else {
+        return query
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'sortOrder',
+                lower: [sortOrder],
+                includeLower: false,
+                upper: [],
+              ),
+            )
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'sortOrder',
+                lower: [],
+                upper: [sortOrder],
+                includeUpper: false,
+              ),
+            );
+      }
+    });
+  }
+
+  QueryBuilder<MeterModel, MeterModel, QAfterWhereClause> sortOrderGreaterThan(
+    int? sortOrder, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(
+        IndexWhereClause.between(
+          indexName: r'sortOrder',
+          lower: [sortOrder],
+          includeLower: include,
+          upper: [],
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<MeterModel, MeterModel, QAfterWhereClause> sortOrderLessThan(
+    int? sortOrder, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(
+        IndexWhereClause.between(
+          indexName: r'sortOrder',
+          lower: [],
+          upper: [sortOrder],
+          includeUpper: include,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<MeterModel, MeterModel, QAfterWhereClause> sortOrderBetween(
+    int? lowerSortOrder,
+    int? upperSortOrder, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(
+        IndexWhereClause.between(
+          indexName: r'sortOrder',
+          lower: [lowerSortOrder],
+          includeLower: includeLower,
+          upper: [upperSortOrder],
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 }
@@ -1710,6 +1866,81 @@ extension MeterModelQueryFilter
     });
   }
 
+  QueryBuilder<MeterModel, MeterModel, QAfterFilterCondition>
+  sortOrderIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'sortOrder'),
+      );
+    });
+  }
+
+  QueryBuilder<MeterModel, MeterModel, QAfterFilterCondition>
+  sortOrderIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'sortOrder'),
+      );
+    });
+  }
+
+  QueryBuilder<MeterModel, MeterModel, QAfterFilterCondition> sortOrderEqualTo(
+    int? value,
+  ) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'sortOrder', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<MeterModel, MeterModel, QAfterFilterCondition>
+  sortOrderGreaterThan(int? value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'sortOrder',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<MeterModel, MeterModel, QAfterFilterCondition> sortOrderLessThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'sortOrder',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<MeterModel, MeterModel, QAfterFilterCondition> sortOrderBetween(
+    int? lower,
+    int? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'sortOrder',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
+    });
+  }
+
   QueryBuilder<MeterModel, MeterModel, QAfterFilterCondition> typeEqualTo(
     MeterType value, {
     bool caseSensitive = true,
@@ -2191,6 +2422,18 @@ extension MeterModelQuerySortBy
     });
   }
 
+  QueryBuilder<MeterModel, MeterModel, QAfterSortBy> sortBySortOrder() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'sortOrder', Sort.asc);
+    });
+  }
+
+  QueryBuilder<MeterModel, MeterModel, QAfterSortBy> sortBySortOrderDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'sortOrder', Sort.desc);
+    });
+  }
+
   QueryBuilder<MeterModel, MeterModel, QAfterSortBy> sortByType() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'type', Sort.asc);
@@ -2410,6 +2653,18 @@ extension MeterModelQuerySortThenBy
     });
   }
 
+  QueryBuilder<MeterModel, MeterModel, QAfterSortBy> thenBySortOrder() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'sortOrder', Sort.asc);
+    });
+  }
+
+  QueryBuilder<MeterModel, MeterModel, QAfterSortBy> thenBySortOrderDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'sortOrder', Sort.desc);
+    });
+  }
+
   QueryBuilder<MeterModel, MeterModel, QAfterSortBy> thenByType() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'type', Sort.asc);
@@ -2533,6 +2788,12 @@ extension MeterModelQueryWhereDistinct
     });
   }
 
+  QueryBuilder<MeterModel, MeterModel, QDistinct> distinctBySortOrder() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'sortOrder');
+    });
+  }
+
   QueryBuilder<MeterModel, MeterModel, QDistinct> distinctByType({
     bool caseSensitive = true,
   }) {
@@ -2645,6 +2906,12 @@ extension MeterModelQueryProperty
   QueryBuilder<MeterModel, double?, QQueryOperations> rolloverValueProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'rolloverValue');
+    });
+  }
+
+  QueryBuilder<MeterModel, int?, QQueryOperations> sortOrderProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'sortOrder');
     });
   }
 

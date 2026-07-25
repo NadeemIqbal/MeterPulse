@@ -22,15 +22,29 @@ class ComputeMeterSummary {
     required List<Reading> cycleReadings,
     required Bill? latestBill,
     required DateTime now,
+    Reading? previousReadingOverride,
   }) {
     final readingCount = cycleReadings.length;
     final baseline = cycleReadings.isNotEmpty ? cycleReadings.first : null;
     final current = cycleReadings.isNotEmpty ? cycleReadings.last : null;
-    final previous =
-        readingCount >= 2 ? cycleReadings[readingCount - 2] : null;
+    final previous = readingCount >= 2
+        ? cycleReadings[readingCount - 2]
+        : previousReadingOverride;
 
-    final unitsUsed = _unitsUsed(baseline, current, meter.rolloverValue);
-    final avgPerDay = _averagePerDay(baseline, current, unitsUsed);
+    var unitsUsed = _unitsUsed(baseline, current, meter.rolloverValue);
+    if ((unitsUsed == null || unitsUsed == 0) &&
+        current != null &&
+        previous != null &&
+        !identical(current, previous)) {
+      unitsUsed = unitsConsumed(
+        current.readingValue,
+        previous.readingValue,
+        rolloverMax: meter.rolloverValue,
+      ).units;
+    }
+
+    final avgPerDay = _averagePerDay(baseline ?? previous, current, unitsUsed);
+
     final projected = projectedUnits(
       unitsSoFar: unitsUsed ?? 0,
       perDay: avgPerDay,

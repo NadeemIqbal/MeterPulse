@@ -48,24 +48,28 @@ class _CaptureViewState extends State<_CaptureView> {
   @override
   void initState() {
     super.initState();
+    _value.addListener(_onValueChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       final cubit = context.read<ReadingCaptureCubit>();
-      // If the OS killed us mid-capture last time (e.g. the camera process
-      // crashed), recover the photo instead of losing it.
       cubit.checkForLostImage();
-      // Default the "new cycle" toggle from whether this cycle is due.
       final suggest = await cubit.shouldSuggestNewCycle();
       if (mounted) setState(() => _startNewCycle = suggest);
     });
   }
 
+  void _onValueChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
+    _value.removeListener(_onValueChanged);
     _value.dispose();
     _notes.dispose();
     super.dispose();
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -288,6 +292,8 @@ class _CaptureViewState extends State<_CaptureView> {
             _ocrBanner(context, state.confidencePercent!)
           else if (state.imagePath != null)
             _manualNeededBanner(context),
+          if (state.cameFromOcr && state.alternativeCandidates.isNotEmpty)
+            _alternativeChips(context, state),
           const SizedBox(height: AppSpacing.md),
           TextField(
             controller: _value,
@@ -302,6 +308,8 @@ class _CaptureViewState extends State<_CaptureView> {
               suffixText: widget.meter.unit,
             ),
           ),
+          const SizedBox(height: AppSpacing.md),
+          _lastReadingCard(context, state),
           const SizedBox(height: AppSpacing.md),
           AppCard(
             padding: EdgeInsets.zero,
@@ -345,6 +353,148 @@ class _CaptureViewState extends State<_CaptureView> {
       ),
     );
   }
+
+  Widget _lastReadingCard(BuildContext context, ReadingCaptureState state) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final prev = state.previousReading;
+    final currentValue = double.tryParse(_value.text.trim());
+
+    if (prev == null) {
+      return AppCard(
+        color: scheme.surfaceContainerLow,
+        child: Row(
+          children: [
+            Icon(Icons.info_outline_rounded, size: 20, color: scheme.primary),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Text(
+                'First reading for ${widget.meter.name}. This will serve as your baseline.',
+                style: theme.textTheme.bodyMedium,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final prevVal = prev.readingValue;
+    final prevDateStr = prev.readingDate.toString().split(' ').first;
+    final daysElapsed = _date.difference(prev.readingDate).inDays.abs();
+
+    String deltaStr = '—';
+    String rateStr = '';
+    Color? deltaColor;
+
+    if (currentValue != null) {
+      final diff = currentValue - prevVal;
+      final formattedDiff = diff % 1 == 0 ? diff.toStringAsFixed(0) : diff.toStringAsFixed(1);
+      if (diff >= 0) {
+        deltaStr = '+$formattedDiff ${widget.meter.unit}';
+        deltaColor = scheme.primary;
+        if (daysElapsed > 0) {
+          final perDay = diff / daysElapsed;
+          rateStr = ' (${perDay.toStringAsFixed(1)} ${widget.meter.unit}/day over $daysElapsed days)';
+        } else if (daysElapsed == 0) {
+          rateStr = ' (same day)';
+        }
+      } else {
+        deltaStr = '$formattedDiff ${widget.meter.unit}';
+        deltaColor = scheme.error;
+        rateStr = ' (lower than last reading)';
+      }
+    }
+
+    return AppCard(
+      color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Previous Reading',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                '${prevVal % 1 == 0 ? prevVal.toStringAsFixed(0) : prevVal} ${widget.meter.unit}',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Recorded on $prevDateStr (${daysElapsed == 0 ? 'today' : '$daysElapsed days ago'})',
+            style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+          const Divider(height: AppSpacing.lg),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Reading Difference',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Flexible(
+                child: Text(
+                  '$deltaStr$rateStr',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: deltaColor ?? scheme.onSurface,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  textAlign: TextAlign.end,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _alternativeChips(BuildContext context, ReadingCaptureState state) {
+    final theme = Theme.of(context);
+    final alts = state.alternativeCandidates;
+    if (alts.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.sm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Other numbers detected on dial:',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Wrap(
+            spacing: AppSpacing.xs,
+            children: alts.map((val) {
+              final formatted = _formatForEditing(val);
+              return ActionChip(
+                label: Text('$formatted ${widget.meter.unit}'),
+                onPressed: () {
+                  _value.text = formatted;
+                },
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
 
   Widget _ocrBanner(BuildContext context, int confidence) {
     final theme = Theme.of(context);

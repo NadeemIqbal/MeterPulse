@@ -9,7 +9,9 @@ import '../../../billing_cycles/domain/repositories/billing_cycle_repository.dar
 import '../../../meters/domain/entities/meter.dart';
 import '../../domain/entities/consumption_timeline.dart';
 import '../../domain/entities/meter_stats.dart';
+import '../../domain/entities/reading.dart';
 import '../../domain/repositories/reading_repository.dart';
+
 
 enum HistoryStatus { loading, loaded, error }
 
@@ -66,6 +68,7 @@ class ReadingHistoryCubit extends Cubit<ReadingHistoryState> {
     final cycleConsumptions = <CycleConsumption>[];
     var totalUnits = 0.0;
 
+    Reading? previousCycleLastReading;
     for (final cycle in cycles) {
       final readings = await _readings.getReadingsForCycle(cycle.id!);
       final entries = <TimelineEntry>[];
@@ -77,11 +80,20 @@ class ReadingHistoryCubit extends Cubit<ReadingHistoryState> {
             readings[i - 1].readingValue,
             rolloverMax: rolloverMax,
           ).units;
+        } else if (previousCycleLastReading != null) {
+          delta = unitsConsumed(
+            readings[0].readingValue,
+            previousCycleLastReading.readingValue,
+            rolloverMax: rolloverMax,
+          ).units;
         }
         entries.add(TimelineEntry(
           reading: readings[i],
           consumedSincePrevious: delta,
         ));
+      }
+      if (readings.isNotEmpty) {
+        previousCycleLastReading = readings.last;
       }
 
       double? cycleTotal;

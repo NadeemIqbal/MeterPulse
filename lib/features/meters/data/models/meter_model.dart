@@ -40,6 +40,9 @@ class MeterModel {
 
   String? notes;
 
+  @Index()
+  int? sortOrder;
+
   // --- Phase 2 configuration (unused in Phase 1, nullable to avoid migration) ---
   double? highUsageThreshold;
   double? expectedMonthlyUnits;

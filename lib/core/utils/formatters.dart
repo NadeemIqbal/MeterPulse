@@ -7,6 +7,7 @@ abstract final class Formatters {
   static final NumberFormat _whole = NumberFormat('#,##0');
   static final DateFormat _date = DateFormat('d MMM yyyy');
   static final DateFormat _shortDate = DateFormat('d MMM');
+  static final DateFormat _monthYear = DateFormat('MMMM yyyy');
 
   /// A units value, or an em dash when null/unknown.
   static String units(double? value) => value == null ? '—' : _units.format(value);
@@ -29,9 +30,19 @@ abstract final class Formatters {
 
   static String shortDate(DateTime value) => _shortDate.format(value);
 
-  /// A currency amount using the device locale's symbol.
-  static String currency(double value) =>
-      NumberFormat.simpleCurrency().format(value);
+  static String monthYear(DateTime value) => _monthYear.format(value);
+
+
+  /// A currency amount using the specified or default symbol ('PKR').
+  static String currency(double value, {String symbol = 'PKR'}) {
+    final formatted = NumberFormat('#,##0.00').format(value);
+    final sym = symbol.trim();
+    if (sym == '\$' || sym == '€' || sym == '£' || sym == '¥' || sym == '₹') {
+      return '$sym$formatted';
+    }
+    return '$sym $formatted';
+  }
+
 
   /// "in 3 days" / "today" / "5 days ago" from a signed day count.
   static String relativeDays(int days) {

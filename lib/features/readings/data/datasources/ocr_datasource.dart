@@ -8,6 +8,7 @@ class OcrScanResult {
     required this.rawText,
     required this.value,
     required this.confidence,
+    this.alternativeValues = const [],
   });
 
   /// All text ML Kit recognised (kept for debugging poor scans).
@@ -16,8 +17,11 @@ class OcrScanResult {
   /// Best numeric candidate, or null if none was found.
   final double? value;
 
-  /// Synthesized confidence 0–1 (see [extractLongestNumericSequence]).
+  /// Synthesized confidence 0–1.
   final double confidence;
+
+  /// Alternative candidate values detected on the meter display.
+  final List<double> alternativeValues;
 }
 
 /// Wraps ML Kit's on-device [TextRecognizer] and extracts the most
@@ -30,25 +34,53 @@ class OcrDatasource {
   final TextRecognizer _recognizer;
 
   /// Runs recognition on the image at [imagePath] and returns the parsed
-  /// candidate. [expectedDigits] (from the meter, if known) sharpens the
-  /// confidence estimate.
+  /// candidate. Optional meter context (unit, meterNumber, previousReadingValue)
+  /// sharpens the detection accuracy.
   Future<OcrScanResult> scanReading(
     String imagePath, {
     int? expectedDigits,
+    String? unit,
+    String? meterNumber,
+    double? previousReadingValue,
   }) async {
     final input = InputImage.fromFilePath(imagePath);
     final recognised = await _recognizer.processImage(input);
-    final parsed = extractLongestNumericSequence(
-      recognised.text,
-      expectedDigits: expectedDigits,
-    );
+
+    final lines = <OcrLineContext>[];
+    for (final block in recognised.blocks) {
+      for (final line in block.lines) {
+        lines.add(OcrLineContext(
+          lineText: line.text,
+          blockText: block.text,
+        ));
+      }
+    }
+
+    final parsed = lines.isNotEmpty
+        ? extractMeterReadingFromLines(
+            lines,
+            expectedDigits: expectedDigits,
+            unit: unit,
+            meterNumber: meterNumber,
+            previousReadingValue: previousReadingValue,
+          )
+        : extractLongestNumericSequence(
+            recognised.text,
+            expectedDigits: expectedDigits,
+            unit: unit,
+            meterNumber: meterNumber,
+            previousReadingValue: previousReadingValue,
+          );
+
     return OcrScanResult(
       rawText: recognised.text,
       value: parsed.value,
       confidence: parsed.confidence,
+      alternativeValues: parsed.alternativeValues,
     );
   }
 
   /// Releases native resources. Call when the recognizer is no longer needed.
   Future<void> dispose() => _recognizer.close();
 }
+

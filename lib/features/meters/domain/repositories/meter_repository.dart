@@ -14,5 +14,8 @@ abstract interface class MeterRepository {
 
   Future<void> setActive(int id, {required bool isActive});
 
+  /// Updates sortOrder of meters matching the given ID sequence.
+  Future<void> updateMeterOrders(List<int> orderedMeterIds);
+
   Future<void> deleteMeter(int id);
 }

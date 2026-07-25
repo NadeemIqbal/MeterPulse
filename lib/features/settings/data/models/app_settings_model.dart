@@ -13,6 +13,8 @@ class AppSettingsModel {
   @Enumerated(EnumType.name)
   AppThemeMode themeMode = AppThemeMode.system;
 
+  String? currencySymbol;
+
   // --- Phase 2 preferences (nullable, unused in Phase 1) ---
   bool? notificationsEnabled;
 
@@ -21,3 +23,4 @@ class AppSettingsModel {
 
   String? notificationSound;
 }
+

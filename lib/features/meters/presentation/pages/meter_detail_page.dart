@@ -153,12 +153,13 @@ class _MeterDetailView extends StatelessWidget {
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: () async {
-                  await context.push(RouteNames.newBill(meter.id!), extra: meter);
+                  await context.push(RouteNames.bills(meter.id!), extra: meter);
                   if (context.mounted) _reload(context);
                 },
                 icon: const Icon(Icons.receipt_long_rounded),
-                label: const Text('Bill'),
+                label: const Text('Bills'),
               ),
+
             ),
             const SizedBox(width: AppSpacing.sm),
             Expanded(

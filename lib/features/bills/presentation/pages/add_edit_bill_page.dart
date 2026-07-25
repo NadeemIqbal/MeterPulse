@@ -10,9 +10,12 @@ import '../../../../core/services/file_storage_service.dart';
 import '../../../../core/services/image_capture_service.dart';
 import '../../../../core/services/permission_service.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/utils/formatters.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../meters/domain/entities/meter.dart';
+import '../../../readings/data/datasources/ocr_datasource.dart';
 import '../../domain/entities/bill.dart';
+import '../../domain/repositories/bill_repository.dart';
 import '../cubit/bill_form_cubit.dart';
 
 /// Add or edit a bill (manual entry with an optional photo of the paper bill).
@@ -47,6 +50,7 @@ class _BillFormState extends State<_BillForm> {
   late final TextEditingController _units;
   late final TextEditingController _notes;
 
+  Bill? _editingBill;
   late DateTime _billDate;
   DateTime? _dueDate;
   bool _isPaid = false;
@@ -55,12 +59,13 @@ class _BillFormState extends State<_BillForm> {
   String? _newPhotoTempPath;
   String? _existingPhotoPath;
 
-  bool get _isEditing => widget.bill != null;
+  bool get _isEditing => _editingBill != null;
 
   @override
   void initState() {
     super.initState();
-    final b = widget.bill;
+    _editingBill = widget.bill;
+    final b = _editingBill;
     _amount = TextEditingController(text: b?.billAmount.toString() ?? '');
     _units = TextEditingController(text: b?.unitsBilled?.toString() ?? '');
     _notes = TextEditingController(text: b?.notes ?? '');
@@ -69,6 +74,7 @@ class _BillFormState extends State<_BillForm> {
     _isPaid = b?.isPaid ?? false;
     _existingPhotoPath = b?.photoPath;
   }
+
 
   @override
   void dispose() {
@@ -271,13 +277,37 @@ class _BillFormState extends State<_BillForm> {
       return;
     }
     final path = await sl<ImageCaptureService>().captureFromCamera();
-    if (path != null) setState(() => _newPhotoTempPath = path);
+    if (path != null) {
+      setState(() => _newPhotoTempPath = path);
+      await _scanBillPhoto(path);
+    }
   }
 
   Future<void> _pickPhoto() async {
     final path = await sl<ImageCaptureService>().pickFromGallery();
-    if (path != null) setState(() => _newPhotoTempPath = path);
+    if (path != null) {
+      setState(() => _newPhotoTempPath = path);
+      await _scanBillPhoto(path);
+    }
   }
+
+  Future<void> _scanBillPhoto(String path) async {
+    try {
+      final ocr = await sl<OcrDatasource>().scanReading(path, unit: widget.meter.unit);
+      if (ocr.value != null && _units.text.trim().isEmpty && mounted) {
+        final formatted = ocr.value! % 1 == 0
+            ? ocr.value!.toStringAsFixed(0)
+            : ocr.value!.toString();
+        setState(() {
+          _units.text = formatted;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Extracted $formatted ${widget.meter.unit} from bill photo')),
+        );
+      }
+    } catch (_) {}
+  }
+
 
   Future<void> _pickBillDate() async {
     final picked = await showDatePicker(
@@ -308,13 +338,40 @@ class _BillFormState extends State<_BillForm> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final repo = sl<BillRepository>();
+    final existingBills = await repo.getBillsForMeter(widget.meter.id!);
+    final duplicate = existingBills.where((b) {
+      return b.id != _editingBill?.id &&
+          b.billDate.year == _billDate.year &&
+          b.billDate.month == _billDate.month;
+    }).firstOrNull;
+
+    if (duplicate != null) {
+      if (!mounted) return;
+      final switchEdit = await _showDuplicateBillDialog(context, duplicate);
+      if (switchEdit == true) {
+        setState(() {
+          _editingBill = duplicate;
+          _amount.text = duplicate.billAmount.toString();
+          _units.text = duplicate.unitsBilled?.toString() ?? '';
+          _notes.text = duplicate.notes ?? '';
+          _billDate = duplicate.billDate;
+          _dueDate = duplicate.dueDate;
+          _isPaid = duplicate.isPaid;
+          _existingPhotoPath = duplicate.photoPath;
+          _newPhotoTempPath = null;
+        });
+      }
+      return;
+    }
+
     // Persist a freshly captured photo; keep the existing one otherwise.
     var photoPath = _existingPhotoPath;
     if (_newPhotoTempPath != null) {
       photoPath = await sl<FileStorageService>().persistImage(_newPhotoTempPath!);
     }
 
-    final existing = widget.bill;
+    final existing = _editingBill;
     final bill = Bill(
       id: existing?.id,
       meterId: widget.meter.id!,
@@ -333,4 +390,29 @@ class _BillFormState extends State<_BillForm> {
     if (!mounted) return;
     await context.read<BillFormCubit>().save(bill);
   }
+
+  Future<bool?> _showDuplicateBillDialog(BuildContext context, Bill existing) {
+    final monthName = Formatters.monthYear(_billDate);
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Bill already exists'),
+        content: Text(
+          'A bill for $monthName already exists for ${widget.meter.name}.\n\n'
+          'Each meter can only have 1 bill per month. Would you like to edit the existing bill instead?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Edit Existing Bill'),
+          ),
+        ],
+      ),
+    );
+  }
+
 }

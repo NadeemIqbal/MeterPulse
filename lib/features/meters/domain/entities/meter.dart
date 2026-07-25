@@ -22,6 +22,7 @@ class Meter extends Equatable {
     this.reminderStartDaysBefore,
     this.reminderFrequencyDays,
     this.billReminderFrequencyDays,
+    this.sortOrder,
     required this.createdAt,
   });
 
@@ -36,6 +37,7 @@ class Meter extends Equatable {
   final int? colorValue;
   final int? iconCodePoint;
   final String? notes;
+  final int? sortOrder;
 
   // Phase 2 configuration.
   final double? highUsageThreshold;
@@ -53,6 +55,7 @@ class Meter extends Equatable {
     int? id,
     String? name,
     bool? isActive,
+    int? sortOrder,
   }) {
     return Meter(
       id: id ?? this.id,
@@ -66,6 +69,7 @@ class Meter extends Equatable {
       colorValue: colorValue,
       iconCodePoint: iconCodePoint,
       notes: notes,
+      sortOrder: sortOrder ?? this.sortOrder,
       highUsageThreshold: highUsageThreshold,
       expectedMonthlyUnits: expectedMonthlyUnits,
       reminderStartDaysBefore: reminderStartDaysBefore,
@@ -88,6 +92,7 @@ class Meter extends Equatable {
         colorValue,
         iconCodePoint,
         notes,
+        sortOrder,
         highUsageThreshold,
         expectedMonthlyUnits,
         reminderStartDaysBefore,

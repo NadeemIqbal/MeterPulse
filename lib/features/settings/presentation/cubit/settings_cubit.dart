@@ -35,6 +35,13 @@ class SettingsCubit extends Cubit<AppSettings> {
     await _repo.saveSettings(updated);
   }
 
+  Future<void> setCurrencySymbol(String symbol) async {
+    final updated = state.copyWith(currencySymbol: symbol.trim());
+    emit(updated);
+    await _repo.saveSettings(updated);
+  }
+
   /// Fires a test notification so the user can confirm delivery.
   Future<void> sendTest() => _notifications.showTest();
 }
+

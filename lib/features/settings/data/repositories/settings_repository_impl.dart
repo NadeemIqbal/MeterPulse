@@ -16,6 +16,7 @@ class SettingsRepositoryImpl implements SettingsRepository {
     if (model == null) return const AppSettings();
     return AppSettings(
       themeMode: model.themeMode,
+      currencySymbol: model.currencySymbol ?? 'PKR',
       notificationsEnabled: model.notificationsEnabled,
       reminderTimeMinutes: model.reminderTimeMinutes,
       notificationSound: model.notificationSound,
@@ -30,10 +31,12 @@ class SettingsRepositoryImpl implements SettingsRepository {
       final model = AppSettingsModel()
         ..id = existing?.id ?? Isar.autoIncrement
         ..themeMode = settings.themeMode
+        ..currencySymbol = settings.currencySymbol
         ..notificationsEnabled = settings.notificationsEnabled
         ..reminderTimeMinutes = settings.reminderTimeMinutes
         ..notificationSound = settings.notificationSound;
       await _isar.appSettingsModels.put(model);
     });
   }
+
 }

@@ -78,25 +78,95 @@ class SettingsPage extends StatelessWidget {
   Widget _generalCard(BuildContext context) {
     return AppCard(
       padding: EdgeInsets.zero,
-      child: Column(
-        children: [
-          ListTile(
-            leading: const Icon(Icons.tune_rounded),
-            title: const Text('Manage meters'),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => context.push(RouteNames.meters),
+      child: BlocBuilder<SettingsCubit, AppSettings>(
+        builder: (context, settings) {
+          final currency = settings.currencySymbol;
+          return Column(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.attach_money_rounded),
+                title: const Text('Currency symbol'),
+                subtitle: Text(currency.isEmpty ? 'PKR' : currency),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => _showCurrencyDialog(context, currency),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.tune_rounded),
+                title: const Text('Manage meters'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => context.push(RouteNames.meters),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.info_outline_rounded),
+                title: const Text('About MeterPulse'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => context.push(RouteNames.about),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _showCurrencyDialog(BuildContext context, String current) async {
+    final controller = TextEditingController(text: current);
+    final cubit = context.read<SettingsCubit>();
+    final presets = ['PKR', '\$', '€', '£', '₹', 'AED', 'SAR'];
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Select Currency Symbol'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: AppSpacing.xs,
+              children: presets.map((p) {
+                return ChoiceChip(
+                  label: Text(p),
+                  selected: controller.text == p,
+                  onSelected: (selected) {
+                    if (selected) {
+                      controller.text = p;
+                      Navigator.of(dialogContext).pop(p);
+                    }
+                  },
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                labelText: 'Custom Currency Symbol',
+                hintText: 'e.g. PKR, \$, Rs',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
           ),
-          const Divider(height: 1),
-          ListTile(
-            leading: const Icon(Icons.info_outline_rounded),
-            title: const Text('About MeterPulse'),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => context.push(RouteNames.about),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(controller.text),
+            child: const Text('Save'),
           ),
         ],
       ),
     );
+
+    if (result != null && result.trim().isNotEmpty) {
+      await cubit.setCurrencySymbol(result.trim());
+    }
   }
+
 
   Widget _sectionLabel(BuildContext context, String text) {
     final theme = Theme.of(context);

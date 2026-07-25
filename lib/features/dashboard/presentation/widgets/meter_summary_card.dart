@@ -16,12 +16,20 @@ import 'status_pill.dart';
 /// "units used this cycle", supporting stats, and quick actions. Tapping the
 /// body opens the meter detail (shared-element Hero on the accent avatar).
 class MeterSummaryCard extends StatelessWidget {
-  const MeterSummaryCard({super.key, required this.summary, this.onChanged});
+  const MeterSummaryCard({
+    super.key,
+    required this.summary,
+    this.onChanged,
+    this.index,
+  });
 
   final MeterSummary summary;
 
   /// Called after returning from a sub-screen so the dashboard can refresh.
   final VoidCallback? onChanged;
+
+  /// Optional item index for reorderable drag start handle.
+  final int? index;
 
   @override
   Widget build(BuildContext context) {
@@ -106,13 +114,27 @@ class MeterSummaryCard extends StatelessWidget {
           ),
         ),
         if (summary.alerts.isNotEmpty)
-          Icon(
-            summary.highUsageExceeded
-                ? Icons.warning_amber_rounded
-                : Icons.info_outline_rounded,
-            color: summary.highUsageExceeded
-                ? theme.colorScheme.error
-                : theme.colorScheme.tertiary,
+          Padding(
+            padding: const EdgeInsets.only(right: AppSpacing.xs),
+            child: Icon(
+              summary.highUsageExceeded
+                  ? Icons.warning_amber_rounded
+                  : Icons.info_outline_rounded,
+              color: summary.highUsageExceeded
+                  ? theme.colorScheme.error
+                  : theme.colorScheme.tertiary,
+            ),
+          ),
+        if (index != null)
+          ReorderableDragStartListener(
+            index: index!,
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.xs),
+              child: Icon(
+                Icons.drag_indicator_rounded,
+                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+              ),
+            ),
           ),
       ],
     );
@@ -279,10 +301,11 @@ class MeterSummaryCard extends StatelessWidget {
             ),
           ),
           IconButton(
-            tooltip: 'Capture bill',
-            onPressed: () => _go(context, RouteNames.newBill(id)),
+            tooltip: 'Bills',
+            onPressed: () => _go(context, RouteNames.bills(id)),
             icon: const Icon(Icons.receipt_long_rounded),
           ),
+
           IconButton(
             tooltip: 'History',
             onPressed: () => _go(context, RouteNames.history(id)),

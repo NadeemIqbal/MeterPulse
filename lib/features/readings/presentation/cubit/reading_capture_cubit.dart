@@ -36,6 +36,8 @@ class ReadingCaptureState extends Equatable {
     this.cameFromOcr = false,
     this.error,
     this.savedReadingId,
+    this.previousReading,
+    this.alternativeCandidates = const [],
   });
 
   final CaptureStage stage;
@@ -52,6 +54,12 @@ class ReadingCaptureState extends Equatable {
   final String? error;
   final int? savedReadingId;
 
+  /// Previous reading on this meter, if any.
+  final Reading? previousReading;
+
+  /// Alternative numeric candidates found on the meter display.
+  final List<double> alternativeCandidates;
+
   int? get confidencePercent =>
       confidence == null ? null : (confidence! * 100).round();
 
@@ -60,6 +68,8 @@ class ReadingCaptureState extends Equatable {
     CaptureStage? stage,
     String? error,
     int? savedReadingId,
+    Reading? previousReading,
+    List<double>? alternativeCandidates,
   }) {
     return ReadingCaptureState(
       stage: stage ?? this.stage,
@@ -70,6 +80,9 @@ class ReadingCaptureState extends Equatable {
       cameFromOcr: cameFromOcr,
       error: error,
       savedReadingId: savedReadingId ?? this.savedReadingId,
+      previousReading: previousReading ?? this.previousReading,
+      alternativeCandidates:
+          alternativeCandidates ?? this.alternativeCandidates,
     );
   }
 
@@ -83,16 +96,13 @@ class ReadingCaptureState extends Equatable {
         cameFromOcr,
         error,
         savedReadingId,
+        previousReading,
+        alternativeCandidates,
       ];
 }
 
 /// Drives the capture → OCR → edit → save flow. Call [attach] with the meter
 /// before use, and [checkForLostImage] when the screen (re)opens.
-///
-/// Every path is defensive: picker/OCR calls are wrapped in try/catch (the
-/// system camera can die on some devices) and every post-`await` `emit` is
-/// guarded by [isClosed] so a result arriving after the screen was torn down
-/// never crashes the app.
 class ReadingCaptureCubit extends Cubit<ReadingCaptureState> {
   ReadingCaptureCubit({
     required PermissionService permissionService,
@@ -120,8 +130,15 @@ class ReadingCaptureCubit extends Cubit<ReadingCaptureState> {
   final BillingCycleRepository _cycles;
 
   late Meter _meter;
+  Reading? _previousReading;
 
-  void attach(Meter meter) => _meter = meter;
+  Future<void> attach(Meter meter) async {
+    _meter = meter;
+    try {
+      _previousReading = await _readings.getLatestReading(meter.id!);
+      emit(state.copyWith(previousReading: _previousReading));
+    } catch (_) {}
+  }
 
   /// Whether the UI should default the "start a new cycle" toggle to on: true
   /// only when the current cycle is due (today is on/after its expected reading
@@ -157,26 +174,36 @@ class ReadingCaptureCubit extends Cubit<ReadingCaptureState> {
   /// Requests camera permission, captures a photo, and runs OCR on it.
   Future<void> captureFromCamera() async {
     try {
-      emit(const ReadingCaptureState(stage: CaptureStage.requestingPermission));
+      emit(ReadingCaptureState(
+        stage: CaptureStage.requestingPermission,
+        previousReading: _previousReading,
+      ));
       final granted = await _permissions.requestCamera();
       if (isClosed) return;
       if (!granted) {
-        emit(const ReadingCaptureState(stage: CaptureStage.permissionDenied));
+        emit(ReadingCaptureState(
+          stage: CaptureStage.permissionDenied,
+          previousReading: _previousReading,
+        ));
         return;
       }
-      emit(const ReadingCaptureState(stage: CaptureStage.capturing));
+      emit(ReadingCaptureState(
+        stage: CaptureStage.capturing,
+        previousReading: _previousReading,
+      ));
       final path = await _capture.captureFromCamera();
       if (isClosed) return;
       if (path == null) {
-        emit(const ReadingCaptureState()); // user backed out
+        emit(ReadingCaptureState(previousReading: _previousReading)); // user backed out
         return;
       }
       await _runOcr(path);
     } catch (_) {
       if (!isClosed) {
-        emit(const ReadingCaptureState(
+        emit(ReadingCaptureState(
           stage: CaptureStage.error,
           error: _cameraFailedMessage,
+          previousReading: _previousReading,
         ));
       }
     }
@@ -185,19 +212,23 @@ class ReadingCaptureCubit extends Cubit<ReadingCaptureState> {
   /// Picks an existing photo and runs OCR on it.
   Future<void> pickFromGallery() async {
     try {
-      emit(const ReadingCaptureState(stage: CaptureStage.capturing));
+      emit(ReadingCaptureState(
+        stage: CaptureStage.capturing,
+        previousReading: _previousReading,
+      ));
       final path = await _capture.pickFromGallery();
       if (isClosed) return;
       if (path == null) {
-        emit(const ReadingCaptureState());
+        emit(ReadingCaptureState(previousReading: _previousReading));
         return;
       }
       await _runOcr(path);
     } catch (_) {
       if (!isClosed) {
-        emit(const ReadingCaptureState(
+        emit(ReadingCaptureState(
           stage: CaptureStage.error,
           error: 'Could not open the gallery. Try again or enter manually.',
+          previousReading: _previousReading,
         ));
       }
     }
@@ -205,7 +236,10 @@ class ReadingCaptureCubit extends Cubit<ReadingCaptureState> {
 
   /// Skips the camera entirely and opens the editor for manual entry.
   void enterManually() {
-    emit(const ReadingCaptureState(stage: CaptureStage.ready));
+    emit(ReadingCaptureState(
+      stage: CaptureStage.ready,
+      previousReading: _previousReading,
+    ));
   }
 
   /// Opens the system app-settings page so a permanently-denied camera
@@ -213,9 +247,18 @@ class ReadingCaptureCubit extends Cubit<ReadingCaptureState> {
   Future<void> openSettings() => _permissions.openSettings();
 
   Future<void> _runOcr(String path) async {
-    emit(ReadingCaptureState(stage: CaptureStage.processing, imagePath: path));
+    emit(ReadingCaptureState(
+      stage: CaptureStage.processing,
+      imagePath: path,
+      previousReading: _previousReading,
+    ));
     try {
-      final result = await _ocr.scanReading(path);
+      final result = await _ocr.scanReading(
+        path,
+        unit: _meter.unit,
+        meterNumber: _meter.meterNumber,
+        previousReadingValue: _previousReading?.readingValue,
+      );
       if (isClosed) return;
       emit(ReadingCaptureState(
         stage: CaptureStage.ready,
@@ -224,11 +267,17 @@ class ReadingCaptureCubit extends Cubit<ReadingCaptureState> {
         confidence: result.value == null ? null : result.confidence,
         rawText: result.rawText,
         cameFromOcr: result.value != null,
+        previousReading: _previousReading,
+        alternativeCandidates: result.alternativeValues,
       ));
     } catch (_) {
       // OCR failed — still let the user type the value against the photo.
       if (isClosed) return;
-      emit(ReadingCaptureState(stage: CaptureStage.ready, imagePath: path));
+      emit(ReadingCaptureState(
+        stage: CaptureStage.ready,
+        imagePath: path,
+        previousReading: _previousReading,
+      ));
     }
   }
 

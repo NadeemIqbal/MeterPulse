@@ -15,6 +15,7 @@ class OcrNumberResult {
     required this.confidence,
     this.rawMatch,
     this.candidateCount = 0,
+    this.alternativeValues = const [],
   });
 
   /// No number could be found in the text.
@@ -22,7 +23,8 @@ class OcrNumberResult {
       : value = null,
         confidence = 0,
         rawMatch = null,
-        candidateCount = 0;
+        candidateCount = 0,
+        alternativeValues = const [];
 
   /// Parsed numeric value, or `null` when no candidate was found.
   final double? value;
@@ -36,10 +38,24 @@ class OcrNumberResult {
   /// How many numeric candidates were seen in the text.
   final int candidateCount;
 
+  /// Alternative detected values found on the meter dial, sorted by rank.
+  final List<double> alternativeValues;
+
   bool get hasValue => value != null;
 
   /// Confidence expressed as a whole percentage for display.
   int get confidencePercent => (confidence * 100).round();
+}
+
+/// Structured line context extracted from OCR text blocks.
+class OcrLineContext {
+  const OcrLineContext({
+    required this.lineText,
+    this.blockText,
+  });
+
+  final String lineText;
+  final String? blockText;
 }
 
 /// Matches an integer or decimal number, allowing `.` or `,` as the separator.
@@ -48,69 +64,214 @@ final RegExp _numberPattern = RegExp(r'\d+(?:[.,]\d+)?');
 /// Number of significant digits in [raw], ignoring any decimal separator.
 int _digitCount(String raw) => raw.replaceAll(RegExp(r'[.,]'), '').length;
 
-/// Extracts the most reading-like number from [text].
-///
-/// Prefers the longest run of digits (a meter reading is usually the longest
-/// number on the dial), normalises a decimal comma to a dot, and attaches a
-/// synthesized [OcrNumberResult.confidence]. When [expectedDigits] is provided
-/// (from the meter's configuration) it sharpens the confidence toward matches
-/// of that length.
-OcrNumberResult extractLongestNumericSequence(
-  String text, {
+/// Disqualifying keywords that indicate a line is a serial number, specs, or date.
+const List<String> _disqualifyingKeywords = [
+  'SN',
+  'S/N',
+  'SERIAL',
+  'NO.',
+  'NO:',
+  'MODEL',
+  'TYPE',
+  'VOLTS',
+  '230V',
+  '110V',
+  '50HZ',
+  '60HZ',
+  'IMP/KWH',
+  'IMP/KW',
+  'IMP',
+  '5(60)A',
+  'CLASS',
+  'MADE IN',
+  'DATE',
+  'YEAR',
+  'BARCODE',
+  'TEL',
+  'IP54',
+  'IEC',
+  'APPROVED',
+  'MANUFACTURER',
+];
+
+/// Keywords that strongly suggest a meter reading / display dial line.
+const List<String> _readingKeywords = [
+  'KWH',
+  'KW.H',
+  'M3',
+  'M³',
+  'GAL',
+  'LITER',
+  'TOTAL',
+  'POS',
+  '1.8.0',
+  'READING',
+  'INDEX',
+  'VALUE',
+  'USAGE',
+  'CONSUMPTION',
+  'KVARH',
+];
+
+/// Candidate score container for ranking OCR matches.
+class _ScoredCandidate {
+  _ScoredCandidate({
+    required this.rawMatch,
+    required this.value,
+    required this.score,
+  });
+
+  final String rawMatch;
+  final double value;
+  final double score;
+}
+
+/// Extracts the most meter-reading-like number using structured OCR lines and
+/// meter context (unit, meter serial number, previous reading value).
+OcrNumberResult extractMeterReadingFromLines(
+  List<OcrLineContext> lines, {
+  String? unit,
+  String? meterNumber,
+  double? previousReadingValue,
   int? expectedDigits,
 }) {
-  final matches = _numberPattern.allMatches(text).map((m) => m.group(0)!).toList();
-  if (matches.isEmpty) return const OcrNumberResult.none();
+  if (lines.isEmpty) return const OcrNumberResult.none();
 
-  // Longest digit run wins; ties resolve to the first occurrence.
-  var best = matches.first;
-  for (final candidate in matches.skip(1)) {
-    if (_digitCount(candidate) > _digitCount(best)) best = candidate;
+  final candidates = <_ScoredCandidate>[];
+
+  for (final lineCtx in lines) {
+    final lineUpper = lineCtx.lineText.toUpperCase();
+    final blockUpper = lineCtx.blockText?.toUpperCase() ?? '';
+
+    final matches = _numberPattern.allMatches(lineCtx.lineText);
+    for (final match in matches) {
+      final raw = match.group(0)!;
+      final normalised = raw.replaceAll(',', '.');
+      final value = double.tryParse(normalised);
+      if (value == null) continue;
+
+      // Ignore candidates matching the meter's serial number.
+      if (meterNumber != null && meterNumber.isNotEmpty) {
+        final cleanMeterNo = meterNumber.replaceAll(RegExp(r'\D'), '');
+        final cleanRaw = raw.replaceAll(RegExp(r'\D'), '');
+        if (cleanMeterNo.isNotEmpty &&
+            (cleanRaw == cleanMeterNo || cleanRaw.contains(cleanMeterNo))) {
+          continue;
+        }
+      }
+
+      var score = 0.5;
+      final digits = _digitCount(raw);
+
+      // Penalize pure long integers (>7 digits without decimal) - serial/barcode numbers.
+      if (!raw.contains('.') && !raw.contains(',') && digits >= 8) {
+        score -= 0.6;
+      } else if (digits >= 4 && digits <= 7) {
+        score += 0.25;
+      }
+
+      // Check for disqualifying keywords on line or in block.
+      final isDisqualified = _disqualifyingKeywords.any(
+        (kw) => lineUpper.contains(kw) || blockUpper.contains(kw),
+      );
+      if (isDisqualified) {
+        score -= 0.45;
+      }
+
+      // Check for unit or reading keywords.
+      final isUnitMatch = unit != null &&
+          unit.isNotEmpty &&
+          (lineUpper.contains(unit.toUpperCase()) ||
+              blockUpper.contains(unit.toUpperCase()));
+      if (isUnitMatch) score += 0.35;
+
+      final isReadingKeyword = _readingKeywords.any(
+        (kw) => lineUpper.contains(kw) || blockUpper.contains(kw),
+      );
+      if (isReadingKeyword) score += 0.25;
+
+      // Check leading zero pattern (e.g. 00124.5).
+      if (raw.startsWith('0') && raw.length >= 3 && !raw.startsWith('0.')) {
+        score += 0.15;
+      }
+
+      // Compare against expected digits if configured.
+      if (expectedDigits != null) {
+        final diff = (digits - expectedDigits).abs();
+        score += switch (diff) {
+          0 => 0.3,
+          1 => 0.15,
+          _ => -0.2,
+        };
+      }
+
+      // Compare against previous reading if available.
+      if (previousReadingValue != null) {
+        if (value >= previousReadingValue &&
+            (value - previousReadingValue) <= 5000) {
+          score += 0.4;
+        } else if (value < previousReadingValue &&
+            (previousReadingValue - value) <= 10) {
+          score += 0.1;
+        } else if ((value - previousReadingValue).abs() > 100000) {
+          score -= 0.4;
+        }
+      }
+
+      candidates.add(_ScoredCandidate(
+        rawMatch: raw,
+        value: value,
+        score: score,
+      ));
+    }
   }
 
-  final normalised = best.replaceAll(',', '.');
-  final value = double.tryParse(normalised);
-  if (value == null) return const OcrNumberResult.none();
+  if (candidates.isEmpty) return const OcrNumberResult.none();
+
+  // Deduplicate candidates by value, keeping highest score.
+  final uniqueMap = <double, _ScoredCandidate>{};
+  for (final c in candidates) {
+    if (!uniqueMap.containsKey(c.value) || c.score > uniqueMap[c.value]!.score) {
+      uniqueMap[c.value] = c;
+    }
+  }
+
+  final sorted = uniqueMap.values.toList()
+    ..sort((a, b) => b.score.compareTo(a.score));
+
+  final best = sorted.first;
+  final alternatives = sorted.skip(1).map((c) => c.value).toList();
+
+  final finalConfidence = (best.score).clamp(0.05, 0.99);
 
   return OcrNumberResult(
-    value: value,
-    rawMatch: best,
-    candidateCount: matches.length,
-    confidence: _confidenceFor(
-      digits: _digitCount(best),
-      candidateCount: matches.length,
-      expectedDigits: expectedDigits,
-    ),
+    value: best.value,
+    confidence: finalConfidence,
+    rawMatch: best.rawMatch,
+    candidateCount: sorted.length,
+    alternativeValues: alternatives,
   );
 }
 
-/// Blends the heuristic signals into a single 0.05–0.99 confidence.
-double _confidenceFor({
-  required int digits,
-  required int candidateCount,
+/// Extracts the most reading-like number from raw [text], with backwards-compatibility.
+OcrNumberResult extractLongestNumericSequence(
+  String text, {
   int? expectedDigits,
+  String? unit,
+  String? meterNumber,
+  double? previousReadingValue,
 }) {
-  var score = 0.5;
+  final lines = text
+      .split('\n')
+      .map((l) => OcrLineContext(lineText: l.trim(), blockText: text))
+      .toList();
 
-  // Agreement with the meter's known digit count is the strongest signal.
-  if (expectedDigits != null) {
-    final diff = (digits - expectedDigits).abs();
-    score += switch (diff) {
-      0 => 0.3,
-      1 => 0.15,
-      _ => -0.2,
-    };
-  }
-
-  // Fewer competing numbers on the dial means less ambiguity.
-  score += switch (candidateCount) {
-    1 => 0.2,
-    2 => 0.05,
-    _ => -0.1,
-  };
-
-  // Long digit runs look like real meter readings.
-  if (digits >= 4) score += 0.1;
-
-  return score.clamp(0.05, 0.99);
+  return extractMeterReadingFromLines(
+    lines,
+    expectedDigits: expectedDigits,
+    unit: unit,
+    meterNumber: meterNumber,
+    previousReadingValue: previousReadingValue,
+  );
 }
+
