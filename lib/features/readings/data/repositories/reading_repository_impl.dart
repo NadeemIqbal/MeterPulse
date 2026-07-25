@@ -17,6 +17,7 @@ class ReadingRepositoryImpl implements ReadingRepository {
         .filter()
         .meterIdEqualTo(meterId)
         .sortByReadingDateDesc()
+        .thenByIdDesc()
         .findAll();
     return models.map(_toEntity).toList();
   }
@@ -27,6 +28,7 @@ class ReadingRepositoryImpl implements ReadingRepository {
         .filter()
         .billingCycleIdEqualTo(cycleId)
         .sortByReadingDate()
+        .thenById()
         .findAll();
     return models.map(_toEntity).toList();
   }
@@ -37,9 +39,11 @@ class ReadingRepositoryImpl implements ReadingRepository {
         .filter()
         .meterIdEqualTo(meterId)
         .sortByReadingDateDesc()
+        .thenByIdDesc()
         .findFirst();
     return model == null ? null : _toEntity(model);
   }
+
 
   @override
   Future<int> saveReading(Reading reading) {

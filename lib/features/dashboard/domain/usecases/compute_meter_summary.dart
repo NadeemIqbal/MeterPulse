@@ -26,7 +26,9 @@ class ComputeMeterSummary {
   }) {
     final readingCount = cycleReadings.length;
     final baseline = cycleReadings.isNotEmpty ? cycleReadings.first : null;
-    final current = cycleReadings.isNotEmpty ? cycleReadings.last : null;
+    final current = cycleReadings.isNotEmpty
+        ? cycleReadings.last
+        : previousReadingOverride;
     final previous = readingCount >= 2
         ? cycleReadings[readingCount - 2]
         : previousReadingOverride;
@@ -35,13 +37,14 @@ class ComputeMeterSummary {
     if ((unitsUsed == null || unitsUsed == 0) &&
         current != null &&
         previous != null &&
-        !identical(current, previous)) {
+        (current.id != previous.id || current.readingValue != previous.readingValue)) {
       unitsUsed = unitsConsumed(
         current.readingValue,
         previous.readingValue,
         rolloverMax: meter.rolloverValue,
       ).units;
     }
+
 
     final avgPerDay = _averagePerDay(baseline ?? previous, current, unitsUsed);
 

@@ -167,10 +167,18 @@ class DashboardCubit extends Cubit<DashboardState> {
       final latestBill = await _bills.getLatestBill(meter.id!);
 
       Reading? previousOverride;
-      if (cycleReadings.length < 2) {
-        final allReadings = await _readings.getReadingsForMeter(meter.id!);
-        if (allReadings.length > cycleReadings.length) {
-          previousOverride = allReadings[cycleReadings.length];
+      final allReadings = await _readings.getReadingsForMeter(meter.id!);
+      if (allReadings.isNotEmpty) {
+        final current = cycleReadings.isNotEmpty ? cycleReadings.last : allReadings.first;
+        final candidates = allReadings.where((r) => r.id != current.id).toList();
+        if (candidates.isNotEmpty) {
+          previousOverride = candidates.firstWhere(
+            (r) =>
+                r.readingDate.isBefore(current.readingDate) ||
+                (r.readingDate.isAtSameMomentAs(current.readingDate) &&
+                    (r.id ?? 0) < (current.id ?? 0)),
+            orElse: () => candidates.first,
+          );
         }
       }
 
@@ -187,5 +195,6 @@ class DashboardCubit extends Cubit<DashboardState> {
     }
     return summaries;
   }
+
 
 }
