@@ -17,8 +17,12 @@ class ReadingRepositoryImpl implements ReadingRepository {
         .filter()
         .meterIdEqualTo(meterId)
         .sortByReadingDateDesc()
-        .thenByIdDesc()
         .findAll();
+    models.sort((a, b) {
+      final cmp = b.readingDate.compareTo(a.readingDate);
+      if (cmp != 0) return cmp;
+      return b.id.compareTo(a.id);
+    });
     return models.map(_toEntity).toList();
   }
 
@@ -28,21 +32,21 @@ class ReadingRepositoryImpl implements ReadingRepository {
         .filter()
         .billingCycleIdEqualTo(cycleId)
         .sortByReadingDate()
-        .thenById()
         .findAll();
+    models.sort((a, b) {
+      final cmp = a.readingDate.compareTo(b.readingDate);
+      if (cmp != 0) return cmp;
+      return a.id.compareTo(b.id);
+    });
     return models.map(_toEntity).toList();
   }
 
   @override
   Future<Reading?> getLatestReading(int meterId) async {
-    final model = await _isar.readingModels
-        .filter()
-        .meterIdEqualTo(meterId)
-        .sortByReadingDateDesc()
-        .thenByIdDesc()
-        .findFirst();
-    return model == null ? null : _toEntity(model);
+    final list = await getReadingsForMeter(meterId);
+    return list.firstOrNull;
   }
+
 
 
   @override
