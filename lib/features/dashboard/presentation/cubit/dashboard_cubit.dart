@@ -160,6 +160,7 @@ class DashboardCubit extends Cubit<DashboardState> {
     final now = DateTime.now();
     final summaries = <MeterSummary>[];
     for (final meter in meters) {
+      if (meter.id == null) continue;
       final cycle = await _cycles.getOpenCycle(meter.id!);
       final cycleReadings = cycle == null
           ? const <Reading>[]
@@ -170,7 +171,7 @@ class DashboardCubit extends Cubit<DashboardState> {
       final allReadings = await _readings.getReadingsForMeter(meter.id!);
       if (allReadings.isNotEmpty) {
         final current = cycleReadings.isNotEmpty ? cycleReadings.last : allReadings.first;
-        final candidates = allReadings.where((r) => r.id != current.id).toList();
+        final candidates = allReadings.where((r) => current.id == null || r.id != current.id).toList();
         if (candidates.isNotEmpty) {
           previousOverride = candidates.firstWhere(
             (r) =>
@@ -181,6 +182,7 @@ class DashboardCubit extends Cubit<DashboardState> {
           );
         }
       }
+
 
       summaries.add(
         _compute(

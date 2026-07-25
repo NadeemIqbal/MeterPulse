@@ -29,16 +29,27 @@ class IsarService {
   /// at startup before the database is opened.
   static const String pendingRestoreName = 'restore_pending.isar';
 
-  /// Opens (or reuses) the Isar instance in the app documents directory,
-  /// applying any staged restore first.
   static Future<Isar> open() async {
     final existing = Isar.getInstance();
     if (existing != null) return existing;
 
     final dir = await getApplicationDocumentsDirectory();
     await _applyPendingRestore(dir.path);
-    return Isar.open(schemas, directory: dir.path);
+
+    try {
+      return await Isar.open(schemas, directory: dir.path);
+    } catch (_) {
+      final lock = File('${dir.path}/default.isar.lock');
+      if (await lock.exists()) {
+        try {
+          await lock.delete();
+        } catch (_) {}
+      }
+      return await Isar.open(schemas, directory: dir.path);
+    }
   }
+
+
 
   /// If a restore was staged, swap it into place before opening. Done at
   /// startup so the live database is never replaced mid-session.

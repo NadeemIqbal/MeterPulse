@@ -49,6 +49,7 @@ Future<Result<T>> guard<T>(
   try {
     return Ok(await action());
   } catch (error) {
-    return Err(onError?.call(error) ?? const DatabaseFailure());
+    return Err(onError?.call(error) ?? DatabaseFailure(error.toString()));
   }
 }
+
