@@ -17,23 +17,28 @@ const AppSettingsModelSchema = CollectionSchema(
   name: r'AppSettingsModel',
   id: -638838212012723081,
   properties: {
-    r'notificationSound': PropertySchema(
+    r'currencySymbol': PropertySchema(
       id: 0,
+      name: r'currencySymbol',
+      type: IsarType.string,
+    ),
+    r'notificationSound': PropertySchema(
+      id: 1,
       name: r'notificationSound',
       type: IsarType.string,
     ),
     r'notificationsEnabled': PropertySchema(
-      id: 1,
+      id: 2,
       name: r'notificationsEnabled',
       type: IsarType.bool,
     ),
     r'reminderTimeMinutes': PropertySchema(
-      id: 2,
+      id: 3,
       name: r'reminderTimeMinutes',
       type: IsarType.long,
     ),
     r'themeMode': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'themeMode',
       type: IsarType.string,
       enumMap: _AppSettingsModelthemeModeEnumValueMap,
@@ -62,6 +67,12 @@ int _appSettingsModelEstimateSize(
 ) {
   var bytesCount = offsets.last;
   {
+    final value = object.currencySymbol;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
     final value = object.notificationSound;
     if (value != null) {
       bytesCount += 3 + value.length * 3;
@@ -77,10 +88,11 @@ void _appSettingsModelSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeString(offsets[0], object.notificationSound);
-  writer.writeBool(offsets[1], object.notificationsEnabled);
-  writer.writeLong(offsets[2], object.reminderTimeMinutes);
-  writer.writeString(offsets[3], object.themeMode.name);
+  writer.writeString(offsets[0], object.currencySymbol);
+  writer.writeString(offsets[1], object.notificationSound);
+  writer.writeBool(offsets[2], object.notificationsEnabled);
+  writer.writeLong(offsets[3], object.reminderTimeMinutes);
+  writer.writeString(offsets[4], object.themeMode.name);
 }
 
 AppSettingsModel _appSettingsModelDeserialize(
@@ -90,13 +102,14 @@ AppSettingsModel _appSettingsModelDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = AppSettingsModel();
+  object.currencySymbol = reader.readStringOrNull(offsets[0]);
   object.id = id;
-  object.notificationSound = reader.readStringOrNull(offsets[0]);
-  object.notificationsEnabled = reader.readBoolOrNull(offsets[1]);
-  object.reminderTimeMinutes = reader.readLongOrNull(offsets[2]);
+  object.notificationSound = reader.readStringOrNull(offsets[1]);
+  object.notificationsEnabled = reader.readBoolOrNull(offsets[2]);
+  object.reminderTimeMinutes = reader.readLongOrNull(offsets[3]);
   object.themeMode =
       _AppSettingsModelthemeModeValueEnumMap[reader.readStringOrNull(
-        offsets[3],
+        offsets[4],
       )] ??
       AppThemeMode.system;
   return object;
@@ -112,10 +125,12 @@ P _appSettingsModelDeserializeProp<P>(
     case 0:
       return (reader.readStringOrNull(offset)) as P;
     case 1:
-      return (reader.readBoolOrNull(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 2:
-      return (reader.readLongOrNull(offset)) as P;
+      return (reader.readBoolOrNull(offset)) as P;
     case 3:
+      return (reader.readLongOrNull(offset)) as P;
+    case 4:
       return (_AppSettingsModelthemeModeValueEnumMap[reader.readStringOrNull(
                 offset,
               )] ??
@@ -234,6 +249,165 @@ extension AppSettingsModelQueryWhere
 
 extension AppSettingsModelQueryFilter
     on QueryBuilder<AppSettingsModel, AppSettingsModel, QFilterCondition> {
+  QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterFilterCondition>
+  currencySymbolIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'currencySymbol'),
+      );
+    });
+  }
+
+  QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterFilterCondition>
+  currencySymbolIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'currencySymbol'),
+      );
+    });
+  }
+
+  QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterFilterCondition>
+  currencySymbolEqualTo(String? value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'currencySymbol',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterFilterCondition>
+  currencySymbolGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'currencySymbol',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterFilterCondition>
+  currencySymbolLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'currencySymbol',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterFilterCondition>
+  currencySymbolBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'currencySymbol',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterFilterCondition>
+  currencySymbolStartsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'currencySymbol',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterFilterCondition>
+  currencySymbolEndsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'currencySymbol',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterFilterCondition>
+  currencySymbolContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'currencySymbol',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterFilterCondition>
+  currencySymbolMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'currencySymbol',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterFilterCondition>
+  currencySymbolIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'currencySymbol', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterFilterCondition>
+  currencySymbolIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'currencySymbol', value: ''),
+      );
+    });
+  }
+
   QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterFilterCondition>
   idEqualTo(Id value) {
     return QueryBuilder.apply(this, (query) {
@@ -702,6 +876,20 @@ extension AppSettingsModelQueryLinks
 extension AppSettingsModelQuerySortBy
     on QueryBuilder<AppSettingsModel, AppSettingsModel, QSortBy> {
   QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterSortBy>
+  sortByCurrencySymbol() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'currencySymbol', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterSortBy>
+  sortByCurrencySymbolDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'currencySymbol', Sort.desc);
+    });
+  }
+
+  QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterSortBy>
   sortByNotificationSound() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'notificationSound', Sort.asc);
@@ -760,6 +948,20 @@ extension AppSettingsModelQuerySortBy
 
 extension AppSettingsModelQuerySortThenBy
     on QueryBuilder<AppSettingsModel, AppSettingsModel, QSortThenBy> {
+  QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterSortBy>
+  thenByCurrencySymbol() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'currencySymbol', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterSortBy>
+  thenByCurrencySymbolDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'currencySymbol', Sort.desc);
+    });
+  }
+
   QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterSortBy> thenById() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.asc);
@@ -833,6 +1035,16 @@ extension AppSettingsModelQuerySortThenBy
 extension AppSettingsModelQueryWhereDistinct
     on QueryBuilder<AppSettingsModel, AppSettingsModel, QDistinct> {
   QueryBuilder<AppSettingsModel, AppSettingsModel, QDistinct>
+  distinctByCurrencySymbol({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(
+        r'currencySymbol',
+        caseSensitive: caseSensitive,
+      );
+    });
+  }
+
+  QueryBuilder<AppSettingsModel, AppSettingsModel, QDistinct>
   distinctByNotificationSound({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(
@@ -869,6 +1081,13 @@ extension AppSettingsModelQueryProperty
   QueryBuilder<AppSettingsModel, int, QQueryOperations> idProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'id');
+    });
+  }
+
+  QueryBuilder<AppSettingsModel, String?, QQueryOperations>
+  currencySymbolProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'currencySymbol');
     });
   }
 
