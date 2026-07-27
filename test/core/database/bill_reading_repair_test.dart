@@ -1,159 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meter_pulse/core/database/bill_reading_repair.dart';
 import 'package:meter_pulse/features/billing_cycles/domain/entities/billing_cycle.dart';
-import 'package:meter_pulse/features/billing_cycles/domain/repositories/billing_cycle_repository.dart';
 import 'package:meter_pulse/features/bills/domain/entities/bill.dart';
-import 'package:meter_pulse/features/bills/domain/repositories/bill_repository.dart';
-import 'package:meter_pulse/features/readings/domain/entities/reading.dart';
-import 'package:meter_pulse/features/readings/domain/repositories/reading_repository.dart';
 
-/// In-memory [BillRepository]. Insertion-ordered; only the reads the repair
-/// actually performs are meaningfully implemented.
-class _FakeBills implements BillRepository {
-  _FakeBills(List<Bill> seed) {
-    for (final b in seed) {
-      store[b.id!] = b;
-    }
-  }
+import '../../support/fake_repositories.dart';
 
-  final Map<int, Bill> store = {};
-  var saveCount = 0;
 
-  @override
-  Future<List<Bill>> getAllBills() async => store.values.toList();
-
-  @override
-  Future<List<Bill>> getBillsForMeter(int meterId) async =>
-      store.values.where((b) => b.meterId == meterId).toList();
-
-  @override
-  Future<Bill?> getLatestBill(int meterId) async =>
-      (await getBillsForMeter(meterId)).firstOrNull;
-
-  @override
-  Future<int> saveBill(Bill bill) async {
-    saveCount++;
-    final id = bill.id ?? (store.keys.fold(0, (m, k) => k > m ? k : m) + 1);
-    store[id] = bill.copyWith(id: id);
-    return id;
-  }
-
-  @override
-  Future<void> deleteBill(int id) async => store.remove(id);
-
-  @override
-  Future<void> setPaid(int id, {required bool isPaid}) async {}
-
-  @override
-  Future<void> setArchived(int id, {required bool isArchived}) async {}
-}
-
-/// In-memory [ReadingRepository] preserving the real ordering contracts:
-/// per-meter newest-first, per-cycle oldest-first.
-class _FakeReadings implements ReadingRepository {
-  _FakeReadings(List<Reading> seed) {
-    for (final r in seed) {
-      store[r.id!] = r;
-    }
-  }
-
-  final Map<int, Reading> store = {};
-  final List<int> deleted = [];
-
-  @override
-  Future<List<Reading>> getReadingsForMeter(int meterId) async {
-    final list = store.values.where((r) => r.meterId == meterId).toList()
-      ..sort((a, b) => b.readingDate.compareTo(a.readingDate));
-    return list;
-  }
-
-  @override
-  Future<List<Reading>> getReadingsForCycle(int cycleId) async {
-    final list = store.values.where((r) => r.billingCycleId == cycleId).toList()
-      ..sort((a, b) => a.readingDate.compareTo(b.readingDate));
-    return list;
-  }
-
-  @override
-  Future<Reading?> getLatestReading(int meterId) async =>
-      (await getReadingsForMeter(meterId)).firstOrNull;
-
-  @override
-  Future<Reading?> getReading(int id) async => store[id];
-
-  @override
-  Future<int> saveReading(Reading reading) async {
-    final id = reading.id ?? (store.keys.fold(0, (m, k) => k > m ? k : m) + 1);
-    store[id] = reading.copyWith(id: id);
-    return id;
-  }
-
-  @override
-  Future<void> deleteReading(int id) async {
-    deleted.add(id);
-    store.remove(id);
-  }
-}
-
-class _FakeCycles implements BillingCycleRepository {
-  _FakeCycles([List<BillingCycle> seed = const []]) {
-    for (final c in seed) {
-      store[c.id!] = c;
-    }
-  }
-
-  final Map<int, BillingCycle> store = {};
-
-  @override
-  Future<BillingCycle?> getOpenCycle(int meterId) async => store.values
-      .where((c) => c.meterId == meterId && !c.isClosed)
-      .firstOrNull;
-
-  @override
-  Future<List<BillingCycle>> getCyclesForMeter(int meterId) async =>
-      store.values.where((c) => c.meterId == meterId).toList();
-
-  @override
-  Future<BillingCycle?> getCycle(int id) async => store[id];
-
-  @override
-  Future<int> saveCycle(BillingCycle cycle) async {
-    final id = cycle.id ?? (store.keys.fold(0, (m, k) => k > m ? k : m) + 1);
-    store[id] = cycle.copyWith(id: id);
-    return id;
-  }
-}
-
-Reading _billReading({
-  required int id,
-  required DateTime date,
-  required double value,
-  int? cycleId,
-}) =>
-    Reading(
-      id: id,
-      meterId: 1,
-      billingCycleId: cycleId,
-      readingValue: value,
-      readingDate: date,
-      notes: '${billReadingMarker}whenever',
-      createdAt: date,
-    );
-
-Reading _userReading({
-  required int id,
-  required DateTime date,
-  required double value,
-  int? cycleId,
-}) =>
-    Reading(
-      id: id,
-      meterId: 1,
-      billingCycleId: cycleId,
-      readingValue: value,
-      readingDate: date,
-      createdAt: date,
-    );
+/// All repair fixtures use a single meter with id 1.
+FakeMeters metersFake() => FakeMeters([testMeterWithId(1)]);
 
 void main() {
   group('BillReadingRepair', () {
@@ -162,7 +16,7 @@ void main() {
       // then its date was changed to 15 Jul, which inserted a second reading
       // with the identical value and abandoned the first. Consumption between
       // two equal readings is zero, which is why no difference showed.
-      final bills = _FakeBills([
+      final bills = FakeBills([
         Bill(
           id: 51,
           meterId: 1,
@@ -172,14 +26,14 @@ void main() {
           createdAt: DateTime(2026, 7, 20),
         ),
       ]);
-      final readings = _FakeReadings([
-        _userReading(id: 100, date: DateTime(2026, 7, 25), value: 20970),
-        _billReading(id: 200, date: DateTime(2026, 7, 26), value: 20914),
-        _billReading(id: 201, date: DateTime(2026, 7, 15), value: 20914),
+      final readings = FakeReadings([
+        userReading(id: 100, date: DateTime(2026, 7, 25), value: 20970),
+        billReading(id: 200, date: DateTime(2026, 7, 26), value: 20914),
+        billReading(id: 201, date: DateTime(2026, 7, 15), value: 20914),
       ]);
 
       final report =
-          await BillReadingRepair(bills, readings, _FakeCycles()).run();
+          await BillReadingRepair(bills, readings, FakeCycles(), metersFake()).run();
 
       // The 15 Jul row matches the bill's date, so the bill adopts it and the
       // 26 Jul leftover goes.
@@ -193,7 +47,7 @@ void main() {
 
     test('backfills meterReading when the stored figure is a meter total',
         () async {
-      final bills = _FakeBills([
+      final bills = FakeBills([
         Bill(
           id: 51,
           meterId: 1,
@@ -203,12 +57,12 @@ void main() {
           createdAt: DateTime(2026, 7, 20),
         ),
       ]);
-      final readings = _FakeReadings([
-        _userReading(id: 100, date: DateTime(2026, 7, 25), value: 20970),
+      final readings = FakeReadings([
+        userReading(id: 100, date: DateTime(2026, 7, 25), value: 20970),
       ]);
 
       final report =
-          await BillReadingRepair(bills, readings, _FakeCycles()).run();
+          await BillReadingRepair(bills, readings, FakeCycles(), metersFake()).run();
 
       // 20914 sits in the same order of magnitude as the real reading 20970 —
       // just below it, as a previous-cycle total should be — so it is a meter
@@ -219,7 +73,7 @@ void main() {
 
     test('refuses to guess when the stored figure looks like consumption',
         () async {
-      final bills = _FakeBills([
+      final bills = FakeBills([
         Bill(
           id: 51,
           meterId: 1,
@@ -229,12 +83,12 @@ void main() {
           createdAt: DateTime(2026, 7, 20),
         ),
       ]);
-      final readings = _FakeReadings([
-        _userReading(id: 100, date: DateTime(2026, 7, 25), value: 20970),
+      final readings = FakeReadings([
+        userReading(id: 100, date: DateTime(2026, 7, 25), value: 20970),
       ]);
 
       final report =
-          await BillReadingRepair(bills, readings, _FakeCycles()).run();
+          await BillReadingRepair(bills, readings, FakeCycles(), metersFake()).run();
 
       // Promoting 56 to a meter total would write a bogus opening reading into
       // a real record, so it is left for the user to fill in.
@@ -244,7 +98,7 @@ void main() {
 
     test('is idempotent — a second run over repaired data changes nothing',
         () async {
-      final bills = _FakeBills([
+      final bills = FakeBills([
         Bill(
           id: 51,
           meterId: 1,
@@ -254,12 +108,12 @@ void main() {
           createdAt: DateTime(2026, 7, 20),
         ),
       ]);
-      final readings = _FakeReadings([
-        _userReading(id: 100, date: DateTime(2026, 7, 25), value: 20970),
-        _billReading(id: 200, date: DateTime(2026, 7, 26), value: 20914),
-        _billReading(id: 201, date: DateTime(2026, 7, 15), value: 20914),
+      final readings = FakeReadings([
+        userReading(id: 100, date: DateTime(2026, 7, 25), value: 20970),
+        billReading(id: 200, date: DateTime(2026, 7, 26), value: 20914),
+        billReading(id: 201, date: DateTime(2026, 7, 15), value: 20914),
       ]);
-      final repair = BillReadingRepair(bills, readings, _FakeCycles());
+      final repair = BillReadingRepair(bills, readings, FakeCycles(), metersFake());
 
       await repair.run();
       final savesAfterFirst = bills.saveCount;
@@ -275,7 +129,7 @@ void main() {
     test('never strips a meter down to no readings', () async {
       // A single unclaimed bill-created reading is all this meter has. Deleting
       // it would erase the meter's history to fix a cosmetic inconsistency.
-      final bills = _FakeBills([
+      final bills = FakeBills([
         Bill(
           id: 51,
           meterId: 1,
@@ -284,19 +138,19 @@ void main() {
           createdAt: DateTime(2026, 7, 20),
         ),
       ]);
-      final readings = _FakeReadings([
-        _billReading(id: 200, date: DateTime(2026, 7, 26), value: 20914),
+      final readings = FakeReadings([
+        billReading(id: 200, date: DateTime(2026, 7, 26), value: 20914),
       ]);
 
       final report =
-          await BillReadingRepair(bills, readings, _FakeCycles()).run();
+          await BillReadingRepair(bills, readings, FakeCycles(), metersFake()).run();
 
       expect(readings.deleted, isEmpty);
       expect(report.orphanReadingsRemoved, 0);
     });
 
     test('repoints a cycle whose baseline reading was removed', () async {
-      final bills = _FakeBills([
+      final bills = FakeBills([
         Bill(
           id: 51,
           meterId: 1,
@@ -307,12 +161,12 @@ void main() {
       ]);
       // Reading 200 is both an unclaimed leftover and the cycle's baseline, so
       // deleting it would leave startReadingId dangling.
-      final readings = _FakeReadings([
-        _billReading(id: 200, date: DateTime(2026, 7, 26), value: 20914, cycleId: 11),
-        _userReading(id: 100, date: DateTime(2026, 7, 27), value: 20970, cycleId: 11),
-        _userReading(id: 101, date: DateTime(2026, 7, 28), value: 21000, cycleId: 11),
+      final readings = FakeReadings([
+        billReading(id: 200, date: DateTime(2026, 7, 26), value: 20914, cycleId: 11),
+        userReading(id: 100, date: DateTime(2026, 7, 27), value: 20970, cycleId: 11),
+        userReading(id: 101, date: DateTime(2026, 7, 28), value: 21000, cycleId: 11),
       ]);
-      final cycles = _FakeCycles([
+      final cycles = FakeCycles([
         BillingCycle(
           id: 11,
           meterId: 1,
@@ -322,12 +176,37 @@ void main() {
         ),
       ]);
 
-      final report = await BillReadingRepair(bills, readings, cycles).run();
+      final report = await BillReadingRepair(bills, readings, cycles, metersFake()).run();
 
       expect(readings.deleted, [200]);
       expect(cycles.store[11]!.startReadingId, 100);
       expect(cycles.store[11]!.cycleStartDate, DateTime(2026, 7, 27));
       expect(report.cyclePointersRepaired, 1);
+    });
+    test('cleans orphans on a meter whose bill was deleted', () async {
+      // The reported Motor case. Keying the sweep off the bill list meant a
+      // meter with no bills left was never visited, so deleting the bill made
+      // its abandoned readings permanently unreachable.
+      final bills = FakeBills();
+      final readings = FakeReadings([
+        billReading(id: 300, date: DateTime(2026, 7, 15), value: 4849),
+        userReading(id: 301, date: DateTime(2026, 7, 25), value: 4914),
+        billReading(id: 302, date: DateTime(2026, 7, 26), value: 4849),
+        userReading(id: 303, date: DateTime(2026, 7, 27), value: 4925),
+      ]);
+
+      final report = await BillReadingRepair(
+        bills,
+        readings,
+        FakeCycles(),
+        metersFake(),
+      ).run();
+
+      // Both 4849 rows go; the readings the user captured are untouched.
+      expect(readings.deleted..sort(), [300, 302]);
+      expect(readings.store[301]!.readingValue, 4914);
+      expect(readings.store[303]!.readingValue, 4925);
+      expect(report.orphanReadingsRemoved, 2);
     });
   });
 }

@@ -9,6 +9,7 @@ import '../../../../core/services/image_capture_service.dart';
 import '../../../../core/services/permission_service.dart';
 import '../../../billing_cycles/domain/repositories/billing_cycle_repository.dart';
 import '../../../meters/domain/entities/meter.dart';
+import '../../../../core/utils/meter_display_mode.dart';
 import '../../data/datasources/ocr_datasource.dart';
 import '../../domain/entities/reading.dart';
 import '../../domain/repositories/reading_repository.dart';
@@ -38,6 +39,7 @@ class ReadingCaptureState extends Equatable {
     this.savedReadingId,
     this.previousReading,
     this.alternativeCandidates = const [],
+    this.assessment,
   });
 
   final CaptureStage stage;
@@ -59,6 +61,10 @@ class ReadingCaptureState extends Equatable {
 
   /// Alternative numeric candidates found on the meter display.
   final List<double> alternativeCandidates;
+
+  /// Verdict on whether [detectedValue] looks like the meter's energy total
+  /// rather than one of the other values the display cycles through.
+  final ReadingAssessment? assessment;
 
   int? get confidencePercent =>
       confidence == null ? null : (confidence! * 100).round();
@@ -83,6 +89,7 @@ class ReadingCaptureState extends Equatable {
       previousReading: previousReading ?? this.previousReading,
       alternativeCandidates:
           alternativeCandidates ?? this.alternativeCandidates,
+      assessment: assessment,
     );
   }
 
@@ -98,6 +105,7 @@ class ReadingCaptureState extends Equatable {
         savedReadingId,
         previousReading,
         alternativeCandidates,
+        assessment,
       ];
 }
 
@@ -209,6 +217,27 @@ class ReadingCaptureCubit extends Cubit<ReadingCaptureState> {
     }
   }
 
+  /// Requests camera permission for the in-app camera, which manages its own
+  /// preview rather than delegating to the system camera app.
+  Future<bool> requestCameraPermission() => _permissions.requestCamera();
+
+  /// Moves to the permission-denied screen after a refused request.
+  void markPermissionDenied() {
+    emit(ReadingCaptureState(
+      stage: CaptureStage.permissionDenied,
+      previousReading: _previousReading,
+    ));
+  }
+
+  /// Handles the result of the in-app camera: OCR reads the cropped LCD while
+  /// the full frame is kept as the reading's photo.
+  Future<void> useInAppCapture({
+    required String croppedPath,
+    required String fullPath,
+  }) async {
+    await _runOcr(fullPath, ocrPath: croppedPath);
+  }
+
   /// Picks an existing photo and runs OCR on it.
   Future<void> pickFromGallery() async {
     try {
@@ -246,7 +275,13 @@ class ReadingCaptureCubit extends Cubit<ReadingCaptureState> {
   /// permission can be re-enabled.
   Future<void> openSettings() => _permissions.openSettings();
 
-  Future<void> _runOcr(String path) async {
+  /// Runs OCR and opens the editor.
+  ///
+  /// [path] is the photo kept with the reading. [ocrPath] is what gets
+  /// recognised — for an in-app capture that is the cropped LCD, so the parser
+  /// never sees the voltage, frequency, imp/kWh rate or serial printed on the
+  /// nameplate. Defaults to [path] for gallery picks and recovered images.
+  Future<void> _runOcr(String path, {String? ocrPath}) async {
     emit(ReadingCaptureState(
       stage: CaptureStage.processing,
       imagePath: path,
@@ -254,12 +289,31 @@ class ReadingCaptureCubit extends Cubit<ReadingCaptureState> {
     ));
     try {
       final result = await _ocr.scanReading(
-        path,
+        ocrPath ?? path,
         unit: _meter.unit,
         meterNumber: _meter.meterNumber,
         previousReadingValue: _previousReading?.readingValue,
       );
       if (isClosed) return;
+
+      // The display cycles through serial, kWh, both MD registers and
+      // instantaneous kW, all rendered identically. Recognising the digits
+      // cleanly says nothing about which of those produced them, so judge the
+      // value against the meter's history before presenting it as a reading.
+      final assessment = result.value == null
+          ? null
+          : assessReading(
+              result.value!,
+              previousValue: _previousReading?.readingValue,
+              daysElapsed: _previousReading == null
+                  ? null
+                  : DateTime.now()
+                      .difference(_previousReading!.readingDate)
+                      .inDays,
+              expectedMonthlyUnits: _meter.expectedMonthlyUnits,
+              meterNumber: _meter.meterNumber,
+            );
+
       emit(ReadingCaptureState(
         stage: CaptureStage.ready,
         imagePath: path,
@@ -269,6 +323,7 @@ class ReadingCaptureCubit extends Cubit<ReadingCaptureState> {
         cameFromOcr: result.value != null,
         previousReading: _previousReading,
         alternativeCandidates: result.alternativeValues,
+        assessment: assessment,
       ));
     } catch (_) {
       // OCR failed — still let the user type the value against the photo.

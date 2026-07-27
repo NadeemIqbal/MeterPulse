@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/error/result.dart';
 import '../../domain/entities/bill.dart';
 import '../../domain/repositories/bill_repository.dart';
+import '../../domain/usecases/delete_bill.dart';
 
 enum BillListStatus { loading, loaded, error }
 
@@ -27,9 +28,10 @@ class BillListState extends Equatable {
 /// Lists a meter's bills and handles add / mark-paid / delete, reloading after
 /// each change.
 class BillCubit extends Cubit<BillListState> {
-  BillCubit(this._repo) : super(const BillListState());
+  BillCubit(this._repo, this._deleteBill) : super(const BillListState());
 
   final BillRepository _repo;
+  final DeleteBill _deleteBill;
 
   late int _meterId;
 
@@ -55,8 +57,9 @@ class BillCubit extends Cubit<BillListState> {
     await load(_meterId);
   }
 
+  /// Removes the bill and the reading it created (see [DeleteBill]).
   Future<void> delete(int id) async {
-    await guard(() => _repo.deleteBill(id));
+    await _deleteBill(id);
     await load(_meterId);
   }
 }

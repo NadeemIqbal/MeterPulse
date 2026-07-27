@@ -8,6 +8,7 @@ import '../../features/bills/domain/repositories/bill_repository.dart';
 import '../../features/analytics/domain/usecases/compute_global_stats.dart';
 import '../../features/analytics/presentation/cubit/global_stats_cubit.dart';
 import '../../features/bills/domain/usecases/compute_bills_overview.dart';
+import '../../features/bills/domain/usecases/delete_bill.dart';
 import '../../features/bills/presentation/cubit/bill_cubit.dart';
 import '../../features/bills/presentation/cubit/global_bills_cubit.dart';
 import '../../features/bills/presentation/cubit/bill_form_cubit.dart';
@@ -97,6 +98,14 @@ Future<void> configureDependencies() async {
         sl<BillRepository>(),
         sl<ReadingRepository>(),
         sl<BillingCycleRepository>(),
+        sl<MeterRepository>(),
+      ),
+    )
+    ..registerLazySingleton<DeleteBill>(
+      () => DeleteBill(
+        sl<BillRepository>(),
+        sl<ReadingRepository>(),
+        sl<BillingCycleRepository>(),
       ),
     );
 
@@ -160,7 +169,9 @@ Future<void> configureDependencies() async {
         sl<BillingCycleRepository>(),
       ),
     )
-    ..registerFactory<BillCubit>(() => BillCubit(sl<BillRepository>()))
+    ..registerFactory<BillCubit>(
+      () => BillCubit(sl<BillRepository>(), sl<DeleteBill>()),
+    )
     ..registerFactory<BillFormCubit>(() => BillFormCubit(sl<BillRepository>()))
     ..registerFactory<GlobalBillsCubit>(
       () => GlobalBillsCubit(
@@ -168,6 +179,7 @@ Future<void> configureDependencies() async {
         meterRepository: sl<MeterRepository>(),
         settingsRepository: sl<SettingsRepository>(),
         compute: sl<ComputeBillsOverview>(),
+        deleteBill: sl<DeleteBill>(),
       ),
     )
     ..registerFactory<GlobalStatsCubit>(

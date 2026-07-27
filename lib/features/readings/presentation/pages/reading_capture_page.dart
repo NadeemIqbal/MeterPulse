@@ -7,9 +7,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/service_locator.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/utils/meter_display_mode.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../meters/domain/entities/meter.dart';
 import '../cubit/reading_capture_cubit.dart';
+import 'meter_camera_page.dart';
 
 /// Camera → OCR → edit → save flow for a reading.
 class ReadingCapturePage extends StatelessWidget {
@@ -149,8 +151,8 @@ class _CaptureViewState extends State<_CaptureView> {
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            'Photograph the dial and we\'ll read the number for you, or enter it '
-            'by hand.',
+            'Line the display up in the box and we\'ll read the number for you, '
+            'or enter it by hand.',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -158,6 +160,12 @@ class _CaptureViewState extends State<_CaptureView> {
           ),
           const SizedBox(height: AppSpacing.xl),
           FilledButton.icon(
+            onPressed: () => _scanWithInAppCamera(context),
+            icon: const Icon(Icons.center_focus_weak_rounded),
+            label: const Text('Scan display'),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          OutlinedButton.icon(
             onPressed: cubit.captureFromCamera,
             icon: const Icon(Icons.camera_alt_rounded),
             label: const Text('Take photo'),
@@ -175,6 +183,36 @@ class _CaptureViewState extends State<_CaptureView> {
           ),
         ],
       ),
+    );
+  }
+
+  /// Opens the in-app camera and feeds its cropped LCD region to OCR.
+  ///
+  /// The hint names the display mode to wait for: an electronic meter rotates
+  /// through serial number, kWh total and both demand registers, and every one
+  /// of them looks like a valid number in the same spot.
+  Future<void> _scanWithInAppCamera(BuildContext context) async {
+    final cubit = context.read<ReadingCaptureCubit>();
+    final granted = await cubit.requestCameraPermission();
+    if (!context.mounted) return;
+    if (!granted) {
+      cubit.markPermissionDenied();
+      return;
+    }
+
+    final result = await Navigator.of(context).push<MeterCaptureResult>(
+      MaterialPageRoute(
+        builder: (_) => MeterCameraPage(
+          hint: 'Wait for the ${widget.meter.unit} total — not the serial '
+              'number or a kW demand value',
+        ),
+      ),
+    );
+    if (result == null || !context.mounted) return;
+
+    await cubit.useInAppCapture(
+      croppedPath: result.croppedPath,
+      fullPath: result.fullPath,
     );
   }
 
@@ -288,7 +326,11 @@ class _CaptureViewState extends State<_CaptureView> {
               ),
             ),
           ],
-          if (state.cameFromOcr && state.confidencePercent != null)
+          // A wrong-mode capture matters more than the confidence score, so it
+          // replaces the reassuring banner rather than sitting beneath it.
+          if (state.assessment != null && !state.assessment!.isClean)
+            _modeWarningBanner(context, state.assessment!)
+          else if (state.cameFromOcr && state.confidencePercent != null)
             _ocrBanner(context, state.confidencePercent!)
           else if (state.imagePath != null)
             _manualNeededBanner(context),
@@ -495,6 +537,31 @@ class _CaptureViewState extends State<_CaptureView> {
     );
   }
 
+
+  /// Warns that the scanned number probably came from the wrong display mode,
+  /// or disagrees with the meter's history. Advisory rather than blocking — the
+  /// user can still correct the field and save.
+  Widget _modeWarningBanner(BuildContext context, ReadingAssessment assessment) {
+    final theme = Theme.of(context);
+    return AppCard(
+      color: theme.colorScheme.errorContainer,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.warning_amber_rounded,
+              color: theme.colorScheme.onErrorContainer),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Text(
+              assessment.message ?? 'This reading looks unusual — please check.',
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onErrorContainer),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _ocrBanner(BuildContext context, int confidence) {
     final theme = Theme.of(context);

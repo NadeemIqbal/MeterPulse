@@ -1,6 +1,7 @@
 import '../../features/billing_cycles/domain/repositories/billing_cycle_repository.dart';
 import '../../features/bills/domain/entities/bill.dart';
 import '../../features/bills/domain/repositories/bill_repository.dart';
+import '../../features/meters/domain/repositories/meter_repository.dart';
 import '../../features/readings/domain/entities/reading.dart';
 import '../../features/readings/domain/repositories/reading_repository.dart';
 
@@ -51,16 +52,27 @@ class BillReadingRepairReport {
 ///
 /// Every step is idempotent: a second run over repaired data changes nothing.
 class BillReadingRepair {
-  const BillReadingRepair(this._bills, this._readings, this._cycles);
+  const BillReadingRepair(
+    this._bills,
+    this._readings,
+    this._cycles,
+    this._meters,
+  );
 
   final BillRepository _bills;
   final ReadingRepository _readings;
   final BillingCycleRepository _cycles;
+  final MeterRepository _meters;
 
   Future<BillReadingRepairReport> run() async {
-    final allBills = await _bills.getAllBills();
-    if (allBills.isEmpty) return const BillReadingRepairReport();
+    // Driven by the meter list, not the bill list. Keying off bills visited only
+    // meters that still had one, so deleting a bill made its abandoned readings
+    // unreachable — they stayed in the history forever. A meter with no bills at
+    // all is exactly the case that needs cleaning.
+    final meters = await _meters.getMeters(includeInactive: true);
+    if (meters.isEmpty) return const BillReadingRepairReport();
 
+    final allBills = await _bills.getAllBills();
     final byMeter = <int, List<Bill>>{};
     for (final bill in allBills) {
       byMeter.putIfAbsent(bill.meterId, () => []).add(bill);
@@ -71,8 +83,11 @@ class BillReadingRepair {
     var removed = 0;
     var cyclesFixed = 0;
 
-    for (final entry in byMeter.entries) {
-      final result = await _repairMeter(entry.key, entry.value);
+    for (final meter in meters) {
+      final meterId = meter.id;
+      if (meterId == null) continue;
+      final result =
+          await _repairMeter(meterId, byMeter[meterId] ?? const []);
       linked += result.billsLinked;
       backfilled += result.meterReadingsBackfilled;
       removed += result.orphanReadingsRemoved;

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/database/bill_reading_repair.dart';
 import '../../../../core/di/service_locator.dart';
 import '../../../../core/error/result.dart';
 import '../../../../core/services/file_storage_service.dart';
@@ -476,19 +477,36 @@ class _BillFormState extends State<_BillForm> {
     }
 
     // Not linked yet — either a new bill, or one saved before `readingId`
-    // existed. Adopt a same-day reading instead of stacking a duplicate on it.
+    // existed.
     final readings = await readingRepo.getReadingsForMeter(widget.meter.id!);
     final sameDay = readings
         .where((r) =>
             r.readingDate.year == _billDate.year &&
             r.readingDate.month == _billDate.month &&
             r.readingDate.day == _billDate.day)
+        .toList();
+
+    // Adopt a reading only if this feature created it. A bill's figure and a
+    // reading the user captured on the same day can legitimately disagree, and
+    // the user's measurement is the real one — overwriting it silently destroys
+    // data (it is how a genuine 4914 became the bill's 4849).
+    final adoptable = sameDay
+        .where((r) => r.notes?.startsWith(billReadingMarker) ?? false)
         .firstOrNull;
-    if (sameDay?.id != null) {
-      await readingRepo
-          .saveReading(sameDay!.copyWith(readingValue: meterReading));
-      return sameDay.id;
+    if (adoptable?.id != null) {
+      await readingRepo.saveReading(
+        adoptable!.copyWith(
+          readingValue: meterReading,
+          notes: 'Bill reading for ${Formatters.date(_billDate)}',
+        ),
+      );
+      return adoptable.id;
     }
+
+    // The user already has their own reading for this date. Leave it untouched
+    // and add nothing that would compete with it — the bill's `meterReading`
+    // still feeds the summary's opening-value fallback.
+    if (sameDay.isNotEmpty) return null;
 
     final result = await sl<AddReading>()(
       reading: Reading(

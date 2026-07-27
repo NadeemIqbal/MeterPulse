@@ -39,10 +39,58 @@ class ComputeMeterSummary {
     // [baseline] regardless meant a cycle holding a single reading spanned zero
     // days, so avg/day, the month-end projection and the pace forecast all
     // silently collapsed to null even though unitsUsed was known.
-    var unitsUsed = _unitsUsed(baseline, current, meter.rolloverValue);
-    DateTime? measuredFrom =
-        (unitsUsed != null && unitsUsed > 0) ? baseline?.readingDate : null;
+    double? unitsUsed;
+    DateTime? measuredFrom;
 
+    // The meter reading printed on the latest bill is the authoritative opening
+    // value for the period, so it takes precedence over the cycle's own first
+    // reading: anything captured after the bill is a mid-cycle check-in, not the
+    // start. As a *fallback* this only fired while the cycle held a single
+    // reading, so adding a second one silently switched the basis to the last
+    // two readings and under-reported the total — a bill at 20,914 with readings
+    // 20,970 then 20,981 showed 11 kWh instead of 67.
+    //
+    // Must be `meterReading` (an absolute meter total), never `unitsBilled` (the
+    // consumption charged); the two were once one field, and feeding billed
+    // units in here produced anomalies or a flat zero for every derived figure.
+    final billOpening = latestBill?.meterReading;
+    if (billOpening != null &&
+        current != null &&
+        current.readingValue >= billOpening &&
+        (baseline == null || baseline.readingValue >= billOpening)) {
+      unitsUsed = unitsConsumed(
+        current.readingValue,
+        billOpening,
+        rolloverMax: meter.rolloverValue,
+      ).units;
+      // Nothing records when the billed reading was taken: `billDate` is when
+      // the provider issued the bill (24 Jul for a reading taken on the 15th),
+      // and `cycleStartDate` is when the current reading opened the cycle, often
+      // giving a zero span. The meter's scheduled reading day is the best
+      // available estimate, so use its previous occurrence.
+      measuredFrom = previousReadingDate(
+        meter.expectedReadingDayOfMonth,
+        from: current.readingDate,
+      );
+    }
+
+    // [unitsUsed] and the date it is measured *from* must stay in step. When the
+    // figure comes from a fallback — the cycle baseline, or a reading in the
+    // previous cycle — the elapsed span has to start there too. Measuring from
+    // [baseline] regardless meant a cycle holding a single reading spanned zero
+    // days, so avg/day, the month-end projection and the pace forecast all
+    // silently collapsed to null even though unitsUsed was known.
+    final fromBaseline = _unitsUsed(baseline, current, meter.rolloverValue);
+    if ((unitsUsed == null || unitsUsed == 0) &&
+        fromBaseline != null &&
+        fromBaseline > 0) {
+      unitsUsed = fromBaseline;
+      measuredFrom = baseline?.readingDate;
+    }
+    unitsUsed ??= fromBaseline;
+
+    // A cycle holding nothing but its baseline: compare against the reading
+    // before it (typically the previous cycle's last).
     if ((unitsUsed == null || unitsUsed == 0) &&
         current != null &&
         previous != null &&
@@ -53,30 +101,6 @@ class ComputeMeterSummary {
         rolloverMax: meter.rolloverValue,
       ).units;
       measuredFrom = previous.readingDate;
-    }
-    // Falls back to the meter reading printed on the last bill as this cycle's
-    // opening value. This must be `meterReading` (an absolute meter total), not
-    // `unitsBilled` (the consumption the provider charged) — the two were once
-    // the same field, so feeding billed units in here as an opening reading
-    // produced anomalies or a flat zero for every derived figure.
-    if ((unitsUsed == null || unitsUsed == 0) &&
-        current != null &&
-        latestBill?.meterReading != null &&
-        current.readingValue != latestBill!.meterReading) {
-      unitsUsed = unitsConsumed(
-        current.readingValue,
-        latestBill.meterReading!,
-        rolloverMax: meter.rolloverValue,
-      ).units;
-      // The billed figure is this cycle's opening reading, but nothing records
-      // when it was taken: `billDate` is when the bill was keyed in, and
-      // `cycleStartDate` is when the *current* reading opened the cycle (often
-      // the same day, giving a zero span). The meter's scheduled reading day is
-      // the best available estimate, so fall back to its previous occurrence.
-      measuredFrom = previousReadingDate(
-        meter.expectedReadingDayOfMonth,
-        from: current.readingDate,
-      );
     }
     measuredFrom ??= baseline?.readingDate;
 

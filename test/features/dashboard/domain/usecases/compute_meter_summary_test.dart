@@ -171,6 +171,95 @@ void main() {
       expect(summary.paceForecast!.dailyRate, closeTo(5.6, 0.001));
     });
 
+    test('measures from the billed reading even once the cycle has two readings',
+        () {
+      // The reported regression. With one reading the billed figure was used and
+      // the total was right; adding a second silently switched the basis to the
+      // last two readings (20,981 − 20,970 = 11) instead of measuring the whole
+      // period from the bill (20,981 − 20,914 = 67).
+      final meter = Meter(
+        id: 1,
+        name: 'First Floor',
+        type: MeterType.electricity,
+        unit: 'kWh',
+        expectedReadingDayOfMonth: 15,
+        highUsageThreshold: 199,
+        createdAt: DateTime(2026, 1, 1),
+      );
+
+      final cycle = BillingCycle(
+        id: 11,
+        meterId: 1,
+        cycleStartDate: DateTime(2026, 7, 25),
+        expectedReadingDate: DateTime(2026, 8, 15),
+        createdAt: DateTime(2026, 7, 25),
+      );
+
+      // Billed 24 Jul, but the reading it states was taken on the meter's
+      // scheduled day (the 15th) — so the span starts there, not at billDate.
+      final bill = Bill(
+        id: 51,
+        meterId: 1,
+        billAmount: 11183.0,
+        billDate: DateTime(2026, 7, 24),
+        unitsBilled: 67,
+        meterReading: 20914,
+        createdAt: DateTime(2026, 7, 24),
+      );
+
+      final summary = compute(
+        meter: meter,
+        cycle: cycle,
+        cycleReadings: [
+          Reading(
+            id: 200,
+            meterId: 1,
+            readingValue: 20970,
+            readingDate: DateTime(2026, 7, 25),
+            createdAt: DateTime(2026, 7, 25),
+          ),
+          Reading(
+            id: 201,
+            meterId: 1,
+            readingValue: 20981,
+            readingDate: DateTime(2026, 7, 27),
+            createdAt: DateTime(2026, 7, 27),
+          ),
+        ],
+        latestBill: bill,
+        now: DateTime(2026, 7, 27),
+      );
+
+      // 20981 − 20914 = 67 units over 15 Jul → 27 Jul = 12 days ⇒ 5.58/day.
+      expect(summary.unitsUsed, 67.0);
+      expect(summary.averagePerDay, closeTo(5.583, 0.001));
+      expect(summary.currentReading?.readingValue, 20981);
+    });
+
+    test('ignores a billed reading above the cycle readings', () {
+      // A bill stating a total higher than the readings cannot be this period's
+      // opening value, so the cycle's own baseline must win rather than
+      // producing a nonsensical or negative figure.
+      final bill = Bill(
+        id: 52,
+        meterId: 1,
+        billAmount: 100.0,
+        billDate: DateTime(2026, 7, 24),
+        meterReading: 999999,
+        createdAt: DateTime(2026, 7, 24),
+      );
+
+      final summary = compute(
+        meter: testMeter,
+        cycle: testCycle,
+        cycleReadings: [r1, r2],
+        latestBill: bill,
+        now: now,
+      );
+
+      expect(summary.unitsUsed, 250.0);
+    });
+
     test('leaves day-based figures null when only a baseline reading exists',
         () {
       // Nothing to measure against: no previous reading and no bill. A zero-day

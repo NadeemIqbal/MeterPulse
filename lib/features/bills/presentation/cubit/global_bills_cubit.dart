@@ -9,6 +9,7 @@ import '../../domain/entities/bill.dart';
 import '../../domain/entities/bills_overview.dart';
 import '../../domain/repositories/bill_repository.dart';
 import '../../domain/usecases/compute_bills_overview.dart';
+import '../../domain/usecases/delete_bill.dart';
 
 enum GlobalBillsStatus { loading, loaded, error }
 
@@ -74,16 +75,19 @@ class GlobalBillsCubit extends Cubit<GlobalBillsState> {
     required MeterRepository meterRepository,
     required SettingsRepository settingsRepository,
     required ComputeBillsOverview compute,
+    required DeleteBill deleteBill,
   })  : _bills = billRepository,
         _meters = meterRepository,
         _settings = settingsRepository,
         _compute = compute,
+        _deleteBill = deleteBill,
         super(const GlobalBillsState());
 
   final BillRepository _bills;
   final MeterRepository _meters;
   final SettingsRepository _settings;
   final ComputeBillsOverview _compute;
+  final DeleteBill _deleteBill;
 
   Future<void> load() async {
     emit(state.copyWith(status: GlobalBillsStatus.loading));
@@ -128,8 +132,9 @@ class GlobalBillsCubit extends Cubit<GlobalBillsState> {
     await load();
   }
 
+  /// Removes the bill and the reading it created (see [DeleteBill]).
   Future<void> delete(int id) async {
-    await guard(() => _bills.deleteBill(id));
+    await _deleteBill(id);
     await load();
   }
 

@@ -37,6 +37,12 @@ class BillRepositoryImpl implements BillRepository {
   }
 
   @override
+  Future<Bill?> getBill(int id) async {
+    final model = await _isar.billModels.get(id);
+    return model == null ? null : _toEntity(model);
+  }
+
+  @override
   Future<int> saveBill(Bill bill) {
     return _isar.writeTxn(() => _isar.billModels.put(_toModel(bill)));
   }
