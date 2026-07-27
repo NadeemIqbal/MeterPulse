@@ -80,8 +80,28 @@ const List<String> _disqualifyingKeywords = [
   '60HZ',
   'IMP/KWH',
   'IMP/KW',
+  'IMPKWH',
   'IMP',
   '5(60)A',
+  '10(40)A',
+  '240V',
+  '220V',
+  // Recognition mangles the nameplate ("Reverse Poww Tote", "3200impkWh"), so
+  // these are matched on real observed output rather than the ideal print.
+  'IEC',
+  'IEC 62053',
+  '62053',
+  'HXE',
+  'PVT',
+  'LIMITED',
+  'ELECTRONICS',
+  'PAKISTAN',
+  'REVERSE',
+  'NEUTRAL',
+  'EARTH',
+  'PHASE',
+  'WIRE',
+  'STATIC',
   'CLASS',
   'MADE IN',
   'DATE',
@@ -179,16 +199,23 @@ OcrNumberResult extractMeterReadingFromLines(
       }
 
       // Check for unit or reading keywords.
-      final isUnitMatch = unit != null &&
-          unit.isNotEmpty &&
-          (lineUpper.contains(unit.toUpperCase()) ||
-              blockUpper.contains(unit.toUpperCase()));
-      if (isUnitMatch) score += 0.35;
+      // Unit and reading-keyword bonuses only count on a line that is not
+      // already disqualified. "3200impkWh" *contains* the unit precisely because
+      // it is the pulse constant, and rewarding that let the nameplate outrank
+      // the register: the constant collected +0.35 for the unit and +0.25 for the
+      // reading keyword, swamping its own penalties.
+      if (!isDisqualified) {
+        final isUnitMatch = unit != null &&
+            unit.isNotEmpty &&
+            (lineUpper.contains(unit.toUpperCase()) ||
+                blockUpper.contains(unit.toUpperCase()));
+        if (isUnitMatch) score += 0.35;
 
-      final isReadingKeyword = _readingKeywords.any(
-        (kw) => lineUpper.contains(kw) || blockUpper.contains(kw),
-      );
-      if (isReadingKeyword) score += 0.25;
+        final isReadingKeyword = _readingKeywords.any(
+          (kw) => lineUpper.contains(kw) || blockUpper.contains(kw),
+        );
+        if (isReadingKeyword) score += 0.25;
+      }
 
       // Check leading zero pattern (e.g. 00124.5).
       if (raw.startsWith('0') && raw.length >= 3 && !raw.startsWith('0.')) {
@@ -205,16 +232,37 @@ OcrNumberResult extractMeterReadingFromLines(
         };
       }
 
-      // Compare against previous reading if available.
+      // Compare against the previous reading. A cumulative register moves
+      // forward by a modest amount, so proximity is the single strongest signal
+      // available — and its absence has to *cost* a candidate, not merely fail to
+      // reward it. Rewarding only the plausible left nameplate constants
+      // (3200imp/kWh, 240V, 50Hz, IEC 62053) tied at their base score, so noise
+      // won by accident whenever the real reading was missed.
       if (previousReadingValue != null) {
         if (value >= previousReadingValue &&
             (value - previousReadingValue) <= 5000) {
           score += 0.4;
         } else if (value < previousReadingValue &&
             (previousReadingValue - value) <= 10) {
+          // Just below: most likely a misread digit on a genuine reading.
           score += 0.1;
+        } else if (previousReadingValue > 0 &&
+            value < previousReadingValue * 0.5) {
+          // Less than half the running total: impossible for a cumulative
+          // register short of replacement. Weighted to overwhelm any combination
+          // of positive heuristics, because being confidently wrong here writes a
+          // bad reading into the user's history.
+          score -= 1.2;
+        } else if (previousReadingValue > 0 &&
+            value > previousReadingValue * 2) {
+          // More than double the total in one interval — a standards number
+          // ("IEC 62053") or a misread, not a reading.
+          score -= 1.0;
         } else if ((value - previousReadingValue).abs() > 100000) {
           score -= 0.4;
+        } else if (value > previousReadingValue + 5000) {
+          // Forward, but implausibly far for one reading interval.
+          score -= 0.3;
         }
       }
 

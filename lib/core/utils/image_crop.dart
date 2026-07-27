@@ -26,14 +26,47 @@ class NormalizedRoi {
     required this.height,
   });
 
-  /// The reticle used by the capture screen: a wide, short band across the
-  /// middle, shaped like a meter's LCD.
-  static const NormalizedRoi meterDisplay = NormalizedRoi(
-    left: 0.08,
-    top: 0.36,
-    width: 0.84,
-    height: 0.28,
-  );
+  @override
+  bool operator ==(Object other) =>
+      other is NormalizedRoi &&
+      other.left == left &&
+      other.top == top &&
+      other.width == width &&
+      other.height == height;
+
+  @override
+  int get hashCode => Object.hash(left, top, width, height);
+
+  /// A centred band shaped like a meter's LCD.
+  ///
+  /// [previewAspect] is width/height of the preview box (≈0.5625 for a 9:16
+  /// portrait frame); [lcdAspect] is the display's own width:height, ~3.5:1 on a
+  /// domestic single-phase meter.
+  ///
+  /// The height must be *derived*, not fixed. A hard-coded 0.28 produced a band
+  /// 1.69:1 on screen — nothing like an LCD, and tall enough to swallow the rows
+  /// printed above and below it. That is how nameplate text ("3200imp/kWh",
+  /// "240V", "50Hz") reached the OCR candidates the crop exists to exclude.
+  factory NormalizedRoi.forDisplay({
+    required double previewAspect,
+    double lcdAspect = 3.5,
+    double width = 0.86,
+  }) {
+    // Convert the desired on-screen aspect into a height *fraction*: fractions
+    // are of different physical lengths on each axis, so the frame's own aspect
+    // has to be folded in.
+    final height = (width * previewAspect / lcdAspect).clamp(0.06, 0.5);
+    return NormalizedRoi(
+      left: (1 - width) / 2,
+      top: 0.5 - height / 2,
+      width: width,
+      height: height,
+    );
+  }
+
+  /// Fallback for callers with no preview aspect to hand (assumes 9:16).
+  static final NormalizedRoi meterDisplay =
+      NormalizedRoi.forDisplay(previewAspect: 9 / 16);
 
   final double left;
   final double top;
@@ -66,11 +99,19 @@ class NormalizedRoi {
 /// [upscaleTo] enlarges the crop so its longest edge is at least that many
 /// pixels. ML Kit is markedly better on larger glyphs, and a tightly cropped
 /// LCD is often only a couple of hundred pixels wide.
+/// Set by the last [cropImageToRoi] call, for logging what the crop actually did.
+/// Not thread-safe and purely diagnostic — never branch on it.
+String? lastDiagnostics;
+
+/// [expectPortrait] states the orientation [roi] was measured in. Pass true when
+/// the reticle was drawn over a portrait preview; the image is rotated to match
+/// if the decoded still disagrees. Null skips the correction entirely.
 Uint8List? cropImageToRoi(
   Uint8List bytes,
   NormalizedRoi roi, {
   int quality = 95,
   int upscaleTo = 1400,
+  bool? expectPortrait,
 }) {
   // decodeImage does not merely return null on bad input — its format sniffing
   // over-reads short or corrupt buffers and throws (RangeError from the PSD
@@ -88,7 +129,21 @@ Uint8List? cropImageToRoi(
   try {
     // Photos carry rotation in EXIF rather than in the pixels. Bake it first, or
     // the region would be measured against a differently-oriented image.
-    final oriented = img.bakeOrientation(decoded);
+    var oriented = img.bakeOrientation(decoded);
+
+    // The reticle is described in the portrait frame the user was looking at,
+    // but Android hands back a landscape still (1920x1080) and does not always
+    // set the EXIF rotation that would correct it. Applying a portrait band to a
+    // landscape image crops a stripe across the meter's body instead of its
+    // display — which is how nameplate text ("3200imp/kWh", "240V") ends up in
+    // the OCR candidates. Rotate to the orientation the region was measured in.
+    if (expectPortrait != null &&
+        expectPortrait != (oriented.height >= oriented.width)) {
+      oriented = img.copyRotate(oriented, angle: 90);
+    }
+    lastDiagnostics = 'decoded=${decoded.width}x${decoded.height} '
+        'oriented=${oriented.width}x${oriented.height} '
+        'expectPortrait=$expectPortrait';
 
     final x = (roi.left * oriented.width).round().clamp(0, oriented.width - 1);
     final y = (roi.top * oriented.height).round().clamp(0, oriented.height - 1);

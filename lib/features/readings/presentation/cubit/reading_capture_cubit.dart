@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/calculation_engine/consumption_calculator.dart';
@@ -288,13 +289,27 @@ class ReadingCaptureCubit extends Cubit<ReadingCaptureState> {
       previousReading: _previousReading,
     ));
     try {
+      // A cumulative register keeps its digit width from one reading to the next,
+      // so the previous reading's length is a strong prior against short
+      // nameplate constants (240, 50) and long ones (62053) alike.
+      final prev = _previousReading?.readingValue;
+      final expectedDigits = prev?.toStringAsFixed(0).length;
+
       final result = await _ocr.scanReading(
         ocrPath ?? path,
         unit: _meter.unit,
         meterNumber: _meter.meterNumber,
-        previousReadingValue: _previousReading?.readingValue,
+        previousReadingValue: prev,
+        expectedDigits: expectedDigits,
       );
       if (isClosed) return;
+
+      // Diagnostic: what the recognizer actually saw. If nameplate text such as
+      // "3200imp/kWh", "240V" or "50Hz" appears here, the crop is not isolating
+      // the LCD — a very different problem from the recognizer struggling with
+      // seven-segment glyphs, and the two demand opposite fixes.
+      debugPrint('OCR[${ocrPath ?? path}] raw="${result.rawText.replaceAll('\n', ' | ')}"');
+      debugPrint('OCR value=${result.value} alts=${result.alternativeValues}');
 
       // The display cycles through serial, kWh, both MD registers and
       // instantaneous kW, all rendered identically. Recognising the digits

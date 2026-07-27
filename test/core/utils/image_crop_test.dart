@@ -85,6 +85,67 @@ void main() {
       expect(decoded.height, lessThanOrEqualTo(60));
     });
 
+    test('forDisplay yields an LCD-shaped band, not a tall block', () {
+      // 9:16 portrait frame, 3.5:1 display.
+      final roi = NormalizedRoi.forDisplay(previewAspect: 9 / 16);
+
+      // The on-screen aspect of the band must come out as the LCD's, which is
+      // the whole point of deriving height instead of hard-coding it.
+      const frameW = 1080.0;
+      const frameH = 1920.0;
+      final onScreenAspect =
+          (roi.width * frameW) / (roi.height * frameH);
+      expect(onScreenAspect, closeTo(3.5, 0.01));
+
+      // The previous hard-coded 0.28 was tall enough to include the nameplate
+      // rows above and below the display.
+      expect(roi.height, lessThan(0.2));
+      expect(roi.top + roi.height / 2, closeTo(0.5, 0.001)); // vertically centred
+      expect(roi.left, closeTo((1 - roi.width) / 2, 0.001)); // horizontally centred
+    });
+
+    test('forDisplay adapts the band to the frame it is drawn in', () {
+      // A 3:4 frame is relatively taller, so the same on-screen shape needs a
+      // smaller height fraction than in 9:16.
+      final wide = NormalizedRoi.forDisplay(previewAspect: 3 / 4);
+      final tall = NormalizedRoi.forDisplay(previewAspect: 9 / 16);
+
+      expect(wide.height, greaterThan(tall.height));
+    });
+
+    test('forDisplay clamps an absurd aspect instead of producing a sliver', () {
+      final roi = NormalizedRoi.forDisplay(previewAspect: 9 / 16, lcdAspect: 500);
+
+      expect(roi.height, greaterThanOrEqualTo(0.06));
+      expect(roi.top, greaterThanOrEqualTo(0.0));
+      expect(roi.top + roi.height, lessThanOrEqualTo(1.0));
+    });
+
+    test('a portrait region applied to a landscape still is corrected', () {
+      // Android hands back a landscape frame (1920x1080) and does not always set
+      // the EXIF rotation that would fix it. Applying a portrait-measured band to
+      // it crops a stripe across the meter body instead of its display.
+      final landscape = _quadrantJpeg(width: 1920, height: 1080);
+      final roi = NormalizedRoi.forDisplay(previewAspect: 9 / 16);
+
+      final corrected =
+          cropImageToRoi(landscape, roi, upscaleTo: 0, expectPortrait: true);
+      final uncorrected =
+          cropImageToRoi(landscape, roi, upscaleTo: 0, expectPortrait: null);
+
+      expect(corrected, isNotNull);
+      expect(uncorrected, isNotNull);
+
+      final a = img.decodeImage(corrected!)!;
+      final b = img.decodeImage(uncorrected!)!;
+
+      // Corrected: the band is measured against the rotated (portrait) frame, so
+      // it is wide relative to a 1080-wide image. Uncorrected it is measured
+      // against 1920 of width. The two must not agree.
+      expect(a.width, isNot(b.width));
+      expect(a.width / a.height, closeTo(3.5, 0.35));
+    });
+
     test('inflated() grows the region but stays inside the frame', () {
       final roi = NormalizedRoi.meterDisplay.inflated(0.06);
 

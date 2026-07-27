@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:isolate';
+import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
@@ -48,7 +49,10 @@ class _MeterCameraPageState extends State<MeterCameraPage>
   bool _capturing = false;
   bool _torchOn = false;
 
-  static const NormalizedRoi _roi = NormalizedRoi.meterDisplay;
+  /// Derived from the live preview's aspect ratio once the controller is up, so
+  /// the band is LCD-shaped on any sensor rather than a fixed fraction that
+  /// happens to swallow the nameplate rows on some.
+  NormalizedRoi _roi = NormalizedRoi.meterDisplay;
 
   @override
   void initState() {
@@ -92,10 +96,12 @@ class _MeterCameraPageState extends State<MeterCameraPage>
       );
       final controller = CameraController(
         back,
-        // High rather than max: the LCD is a small part of the frame and gets
-        // upscaled after cropping, while max resolution slows capture and
-        // decoding noticeably on mid-range hardware.
-        ResolutionPreset.high,
+        // The LCD occupies a small slice of the frame, and after cropping only
+        // those pixels remain for the recognizer — so capture resolution sets the
+        // ceiling on accuracy. `high` gave a 1920x1080 still, leaving a tightly
+        // cropped display only a few hundred pixels wide. Upscaling cannot invent
+        // detail, so capture more of it.
+        ResolutionPreset.veryHigh,
         enableAudio: false,
       );
       await controller.initialize();
@@ -103,16 +109,51 @@ class _MeterCameraPageState extends State<MeterCameraPage>
         await controller.dispose();
         return;
       }
+
+      // Portrait preview: controller.value.aspectRatio is the sensor's
+      // width/height, so invert it to get the on-screen box's aspect.
+      final previewAspect = 1 / controller.value.aspectRatio;
+      final roi = NormalizedRoi.forDisplay(previewAspect: previewAspect);
+
       setState(() {
         _controller = controller;
+        _roi = roi;
         _error = null;
       });
+
+      await _meterOnReticle(controller, roi);
     } on CameraException catch (e) {
       if (mounted) {
         setState(() => _error = e.description ?? 'Could not open the camera.');
       }
     } catch (_) {
       if (mounted) setState(() => _error = 'Could not open the camera.');
+    }
+  }
+
+  /// Points autofocus and auto-exposure at the reticle instead of the whole
+  /// frame.
+  ///
+  /// Metering the full scene lets a pale meter body dominate, so a backlit LCD
+  /// blows out to a white slab and focus favours the body rather than the glass —
+  /// both directly cost OCR accuracy. Focus/exposure points are normalized 0–1,
+  /// the same space the ROI already uses.
+  Future<void> _meterOnReticle(
+    CameraController controller,
+    NormalizedRoi roi,
+  ) async {
+    final centre = Offset(roi.left + roi.width / 2, roi.top + roi.height / 2);
+    // Each call is individually optional — plenty of devices support only some,
+    // and an unsupported one must not abort the rest or fail the screen.
+    for (final action in <Future<void> Function()>[
+      () => controller.setFocusMode(FocusMode.auto),
+      () => controller.setExposureMode(ExposureMode.auto),
+      () => controller.setFocusPoint(centre),
+      () => controller.setExposurePoint(centre),
+    ]) {
+      try {
+        await action();
+      } catch (_) {}
     }
   }
 
@@ -142,13 +183,49 @@ class _MeterCameraPageState extends State<MeterCameraPage>
       // hurts recognition far more than surrounding space does.
       final roi = _roi.inflated(0.06);
 
-      // Decoding a full-resolution JPEG blocks long enough to drop frames, so
-      // it runs on its own isolate.
-      final cropped = await Isolate.run(() => cropImageToRoi(bytes, roi));
+      // Decoding a full-resolution JPEG blocks long enough to drop frames, so it
+      // runs on its own isolate. Guarded separately from the capture: cropping is
+      // an optimisation for OCR accuracy, and losing it must degrade to reading
+      // the full frame rather than throwing away a photo the user just took.
+      // The reticle was drawn over a portrait preview, so the region is measured
+      // in portrait. Android's still is landscape and may lack the EXIF rotation
+      // that would correct it, hence stating the expectation explicitly.
+      //
+      // Tried off-thread first because decoding a full-resolution JPEG drops
+      // frames, then retried inline. Losing the crop is not a cosmetic
+      // degradation: it hands the recognizer the entire nameplate, where "240V",
+      // "50Hz" and "3200imp/kWh" outrank the actual reading. A moment of jank is
+      // vastly preferable, so the inline attempt is a guaranteed second chance
+      // rather than an optimisation.
+      Uint8List? cropped;
+      try {
+        cropped = await Isolate.run(
+          () => cropImageToRoi(bytes, roi, expectPortrait: true),
+        );
+      } catch (e) {
+        debugPrint('MeterCameraPage: crop isolate failed: $e');
+      }
+      if (cropped == null) {
+        try {
+          cropped = cropImageToRoi(bytes, roi, expectPortrait: true);
+          debugPrint('MeterCameraPage: inline crop $lastDiagnostics '
+              '-> ${cropped?.length} bytes');
+        } catch (e) {
+          debugPrint('MeterCameraPage: inline crop failed too: $e');
+        }
+      }
+      debugPrint('MeterCameraPage: roi=(${roi.left},${roi.top},'
+          '${roi.width},${roi.height}) cropBytes=${cropped?.length} '
+          'srcBytes=${bytes.length}');
 
       var croppedPath = shot.path;
       if (cropped != null) {
-        croppedPath = '${shot.path}_lcd.jpg';
+        // Sibling file with a .jpg extension rather than appending to the
+        // existing name: ML Kit and the platform decoder both key off the
+        // extension, and "…jpg_lcd.jpg" is fragile.
+        final dir = File(shot.path).parent.path;
+        final stem = shot.path.split('/').last.split('.').first;
+        croppedPath = '$dir/${stem}_lcd.jpg';
         await File(croppedPath).writeAsBytes(cropped, flush: true);
       }
 
@@ -156,11 +233,17 @@ class _MeterCameraPageState extends State<MeterCameraPage>
       Navigator.of(context).pop(
         MeterCaptureResult(croppedPath: croppedPath, fullPath: shot.path),
       );
-    } catch (_) {
+    } catch (e, stack) {
+      // Report before swallowing. A bare `catch (_)` here meant a capture
+      // failure surfaced only as "Could not take the photo", with nothing in the
+      // logs to say which step broke — the error has to reach the log even
+      // though the UI stays friendly.
+      debugPrint('MeterCameraPage: capture failed: $e');
+      debugPrintStack(stackTrace: stack, label: 'MeterCameraPage.capture');
       if (!mounted) return;
       setState(() {
         _capturing = false;
-        _error = 'Could not take the photo. Try again.';
+        _error = 'Could not take the photo ($e). Try again.';
       });
     }
   }
@@ -230,13 +313,30 @@ class _MeterCameraPageState extends State<MeterCameraPage>
             // fractions must describe the same area in preview and photo.
             child: AspectRatio(
               aspectRatio: 1 / controller.value.aspectRatio,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  CameraPreview(controller),
-                  CustomPaint(painter: _ReticlePainter(_roi)),
-                  _reticleHint(),
-                ],
+              // One LayoutBuilder wrapping the Stack, so the hint's Positioned
+              // is a *direct* Stack child. Returning a Positioned from inside a
+              // LayoutBuilder that is itself the Stack's child applies
+              // StackParentData to a render object expecting BoxParentData: it
+              // throws on every build and leaves the overlay's layout corrupt.
+              child: LayoutBuilder(
+                builder: (context, constraints) => Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    CameraPreview(controller),
+                    CustomPaint(painter: _ReticlePainter(_roi)),
+                    // Anchored by its *bottom* to just above the reticle, so the
+                    // pill cannot overlap the box however many lines it wraps to.
+                    // Positioning by `top` minus a guessed height put a two-line
+                    // hint straight over the reticle's upper edge.
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: (constraints.maxHeight * (1 - _roi.top) + 10)
+                          .clamp(0.0, constraints.maxHeight - 40),
+                      child: _hintText(),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -246,52 +346,57 @@ class _MeterCameraPageState extends State<MeterCameraPage>
     );
   }
 
-  Widget _reticleHint() {
+  Widget _hintText() {
     final hint = widget.hint;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final top = constraints.maxHeight * _roi.top;
-        return Positioned(
-          left: 0,
-          right: 0,
-          top: (top - 56).clamp(8.0, constraints.maxHeight),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-            child: Column(
-              children: [
-                const Text(
-                  'Line up the meter display inside the box',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    shadows: [Shadow(blurRadius: 6, color: Colors.black)],
-                  ),
-                ),
-                if (hint != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    hint,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.amberAccent,
-                      fontSize: 13,
-                      shadows: [Shadow(blurRadius: 6, color: Colors.black)],
-                    ),
-                  ),
-                ],
-              ],
+    // An opaque plate rather than text shadows: shadows fail over exactly the
+    // bright, glare-lit meters where the guidance matters most.
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.sm,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.62),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Names the real constraint: the digits must be *large*, not merely
+            // inside the box. Distance is what decides whether OCR can read them.
+            const Text(
+              'Move closer until the digits fill the box',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
             ),
-          ),
-        );
-      },
+            if (hint != null) ...[
+              const SizedBox(height: 2),
+              Text(
+                hint,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.amberAccent, fontSize: 12),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 
+  // SafeArea is load-bearing, not cosmetic. Without it the shutter sits inside
+  // Android's gesture-navigation strip, where the system's swipe-up monitor
+  // steals the touch — observed in logcat as "[Gesture Monitor] swipe-up is
+  // stealing input gesture", with the app sent to the launcher instead of taking
+  // a photo. The button was simply not pressable.
   Widget _shutterBar() => Container(
         color: Colors.black,
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
-        child: Center(
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+            child: Center(
           child: _capturing
               ? const SizedBox(
                   height: 64,
@@ -314,6 +419,8 @@ class _MeterCameraPageState extends State<MeterCameraPage>
                         color: Colors.black, size: 30),
                   ),
                 ),
+            ),
+          ),
         ),
       );
 }
@@ -342,7 +449,10 @@ class _ReticlePainter extends CustomPainter {
         Path()..addRect(Offset.zero & size),
         Path()..addRRect(rrect),
       ),
-      Paint()..color = Colors.black54,
+      // 0.34, not black54. At 54% nothing outside the reticle can be brighter
+      // than mid-grey, which reads as a sheet laid over the whole viewfinder
+      // rather than emphasis on the target.
+      Paint()..color = Colors.black.withValues(alpha: 0.34),
     );
 
     canvas.drawRRect(

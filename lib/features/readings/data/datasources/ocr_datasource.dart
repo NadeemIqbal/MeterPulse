@@ -1,6 +1,10 @@
+import 'dart:io';
+import 'dart:isolate';
+
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 
 import '../../../../core/utils/number_parsing_utils.dart';
+import '../../../../core/utils/seven_segment_decoder.dart';
 
 /// Result of running OCR over a meter photo.
 class OcrScanResult {
@@ -43,6 +47,18 @@ class OcrDatasource {
     String? meterNumber,
     double? previousReadingValue,
   }) async {
+    // Seven-segment decoder first. Every meter this app targets uses a
+    // seven-segment LCD, and general text recognition is unreliable on them —
+    // measured on a real display it read 228235 from 02282385. The decoder reads
+    // segment geometry rather than glyph shapes, so when it is confident it is
+    // strictly better; when it declines, ML Kit still gets its turn below.
+    final segmentResult = await _trySevenSegment(
+      imagePath,
+      previousReadingValue: previousReadingValue,
+      expectedDigits: expectedDigits,
+    );
+    if (segmentResult != null) return segmentResult;
+
     final input = InputImage.fromFilePath(imagePath);
     final recognised = await _recognizer.processImage(input);
 
@@ -78,6 +94,46 @@ class OcrDatasource {
       confidence: parsed.confidence,
       alternativeValues: parsed.alternativeValues,
     );
+  }
+
+  /// Runs the seven-segment decoder, returning a result only when it is worth
+  /// preferring over general OCR.
+  ///
+  /// A confident decode is accepted outright. A middling one is accepted only if
+  /// it agrees with the meter's history — a reading containing a `1` scores lower
+  /// by construction, so a plausible value with modest confidence is still a
+  /// better bet than ML Kit guessing at segment glyphs. Anything else defers.
+  Future<OcrScanResult?> _trySevenSegment(
+    String imagePath, {
+    double? previousReadingValue,
+    int? expectedDigits,
+  }) async {
+    try {
+      final bytes = await File(imagePath).readAsBytes();
+      // Decoding and scanning is CPU-bound; keep it off the UI isolate.
+      final decoded = await Isolate.run(() => decodeSevenSegment(bytes));
+      if (decoded?.value == null) return null;
+
+      final value = decoded!.value!;
+      final digitsMatch =
+          expectedDigits == null || decoded.digits.length == expectedDigits;
+      final movedForwardPlausibly = previousReadingValue == null ||
+          (value >= previousReadingValue &&
+              value - previousReadingValue <= 5000);
+
+      final trustworthy = decoded.confidence >= 0.6 ||
+          (movedForwardPlausibly && digitsMatch);
+      if (!trustworthy) return null;
+
+      return OcrScanResult(
+        rawText: 'seven-segment: ${decoded.digits}',
+        value: value,
+        confidence: decoded.confidence,
+      );
+    } catch (_) {
+      // Any failure just defers to ML Kit rather than failing the scan.
+      return null;
+    }
   }
 
   /// Releases native resources. Call when the recognizer is no longer needed.
