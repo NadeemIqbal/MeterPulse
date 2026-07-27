@@ -1,0 +1,193 @@
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: 'class', theme: { extend: { colors: { 'tertiary-fixed': '#e9ddff', 'error-container': '#ffdad6', 'on-tertiary-fixed-variant': '#5516be', 'primary-container': '#2170e4', 'on-primary': '#ffffff', 'inverse-surface': '#2a313d', 'tertiary-fixed-dim': '#d0bcff', 'on-secondary-fixed-variant': '#004e5c', 'outline': '#727785', 'on-error': '#ffffff', 'on-secondary-fixed': '#001f26', 'surface-variant': '#dce2f3', 'secondary': '#00687a', 'tertiary': '#6b38d4', 'surface-dim': '#d3daea', 'surface-container-high': '#e2e8f8', 'on-secondary': '#ffffff', 'on-surface-variant': '#424754', 'on-tertiary-fixed': '#23005c', 'error': '#ba1a1a', 'surface-bright': '#f9f9ff', 'inverse-on-surface': '#ebf1ff', 'primary': '#0058be', 'outline-variant': '#c2c6d6', 'on-tertiary-container': '#fffbff', 'surface': '#f9f9ff', 'surface-container-low': '#f0f3ff', 'secondary-container': '#57dffe', 'primary-fixed-dim': '#adc6ff', 'tertiary-container': '#8455ef', 'surface-container': '#e7eefe', 'background': '#f9f9ff', 'on-surface': '#151c27', 'surface-container-lowest': '#ffffff', 'secondary-fixed-dim': '#4cd7f6', 'surface-container-highest': '#dce2f3', 'on-primary-fixed': '#001a42', 'primary-fixed': '#d8e2ff', 'on-primary-container': '#fefcff', 'on-secondary-container': '#006172', 'on-tertiary': '#ffffff', 'on-error-container': '#93000a', 'inverse-primary': '#adc6ff', 'on-background': '#151c27', 'on-primary-fixed-variant': '#004395', 'secondary-fixed': '#acedff', 'surface-tint': '#005ac2' }, borderRadius: { 'DEFAULT': '0.25rem', 'lg': '0.5rem', 'xl': '0.75rem', 'full': '9999px' }, spacing: { 'xl': '32px', 'base': '4px', 'lg': '24px', 'gutter': '20px', 'md': '16px', 'sm': '8px', 'xs': '4px', 'margin-desktop': '48px', 'margin-mobile': '16px' }, fontFamily: { 'headline-lg': ['Inter'], 'body-lg': ['Inter'], 'title-md': ['Inter'] } } } }</script><style>@layer base { body { -webkit-tap-highlight-color: transparent; scroll-behavior: smooth; } .pb-safe { padding-bottom: env(safe-area-inset-bottom); } .pt-safe { padding-top: env(safe-area-inset-top); } } .no-scrollbar::-webkit-scrollbar { display: none; }</style><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-background text-on-background min-h-screen"><header class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-xl pt-safe shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-16 px-margin-mobile flex items-center justify-between"><div class="flex items-center gap-sm"><img alt="MeterPulse Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAYRfWSrmLFDhzhwtT9_PNjOZgiuTriKHoZIpif7kGa57VmwJP4G3_rwmxgoyD8nxDAdtgJSf238pBguCeobPEvdt_pZc2GlOOZCBIGGHcVNgkRIW0YrXeVrFQ2iylX3VONeL5rCr7SRjI_CCa1Taw0AIVtfXMALKjJ33IAQh_Pon7tq1O0khPqbm6oJ5qtilW3TMuCBE-fteQZGReI4LBcc-JIXpVtgvKJ4UeIZ_Orn_zXWe6_HzGXNTFfugTLAnz-AS5C4om-S2I"/><span class="font-title-lg text-title-lg text-on-surface">MeterPulse</span></div><div class="flex items-center gap-xs"><a class="w-10 h-10 flex items-center justify-center text-on-surface-variant" data-path="manage-meters" href="#"><span class="material-symbols-outlined">settings_input_component</span></a><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center ml-xs"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="pt-16 pb-32 bg-surface min-h-screen"><div class="flex flex-col w-full px-margin-mobile gap-lg pb-xl">
+<!-- Profile Summary Hero -->
+<div class="relative overflow-hidden rounded-xl bg-primary-container p-lg flex items-center gap-md shadow-md">
+<div class="relative z-10 w-16 h-16 rounded-full bg-surface-container-lowest flex items-center justify-center text-primary shadow-sm">
+<span class="material-symbols-outlined text-[32px]">person</span>
+</div>
+<div class="relative z-10 flex flex-col">
+<span class="font-title-lg text-title-lg text-on-primary-container">Alex Thompson</span>
+<span class="font-body-md text-body-md text-on-primary-container/80">Pro Member • Home Manager</span>
+</div>
+<!-- Decorative background element -->
+<div class="absolute -right-4 -top-4 w-32 h-32 bg-on-primary-container/5 rounded-full blur-2xl"></div>
+</div>
+<!-- Appearance Section -->
+<section class="flex flex-col gap-sm">
+<div class="flex items-center gap-xs px-base">
+<span class="material-symbols-outlined text-primary text-[20px]">palette</span>
+<h2 class="font-label-lg text-label-lg uppercase tracking-wider text-on-surface-variant">Appearance</h2>
+</div>
+<div class="bg-surface-container-low rounded-xl overflow-hidden">
+<div class="flex items-center justify-between p-md border-b border-outline-variant/10">
+<div class="flex flex-col">
+<span class="font-title-md text-title-md text-on-surface">Theme Mode</span>
+<span class="font-body-md text-body-md text-on-surface-variant">Select your visual preference</span>
+</div>
+</div>
+<div class="flex p-md gap-sm bg-surface-container">
+<button class="theme-btn flex-1 flex flex-col items-center justify-center gap-xs py-sm rounded-lg bg-primary text-on-primary transition-all shadow-sm" onclick="updateTheme(this, 'system')">
+<span class="material-symbols-outlined">settings_brightness</span>
+<span class="font-label-lg text-label-lg">System</span>
+</button>
+<button class="theme-btn flex-1 flex flex-col items-center justify-center gap-xs py-sm rounded-lg bg-surface-container-highest text-on-surface-variant transition-all" onclick="updateTheme(this, 'light')">
+<span class="material-symbols-outlined">light_mode</span>
+<span class="font-label-lg text-label-lg">Light</span>
+</button>
+<button class="theme-btn flex-1 flex flex-col items-center justify-center gap-xs py-sm rounded-lg bg-surface-container-highest text-on-surface-variant transition-all" onclick="updateTheme(this, 'dark')">
+<span class="material-symbols-outlined">dark_mode</span>
+<span class="font-label-lg text-label-lg">Dark</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Notifications Section -->
+<section class="flex flex-col gap-sm">
+<div class="flex items-center gap-xs px-base">
+<span class="material-symbols-outlined text-primary text-[20px]">notifications</span>
+<h2 class="font-label-lg text-label-lg uppercase tracking-wider text-on-surface-variant">Notifications</h2>
+</div>
+<div class="bg-surface-container-low rounded-xl divide-y divide-outline-variant/20">
+<div class="flex items-center justify-between p-md">
+<div class="flex flex-col flex-1 pr-md">
+<span class="font-title-md text-title-md text-on-surface">Reading Reminders</span>
+<span class="font-body-md text-body-md text-on-surface-variant">Get notified when it's time to log meters</span>
+</div>
+<div class="relative inline-block w-12 h-6 transition duration-200 ease-in-out">
+<input checked="" class="peer opacity-0 w-0 h-0" type="checkbox"/>
+<span class="absolute cursor-pointer inset-0 rounded-full bg-outline-variant peer-checked:bg-primary transition-colors duration-200" onclick="this.previousElementSibling.click()"></span>
+<span class="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-200 peer-checked:translate-x-6" onclick="this.previousElementSibling.previousElementSibling.click()"></span>
+</div>
+</div>
+<div class="flex items-center justify-between p-md">
+<div class="flex flex-col flex-1 pr-md">
+<span class="font-title-md text-title-md text-on-surface">Bill Due Alerts</span>
+<span class="font-body-md text-body-md text-on-surface-variant">Reminders 3 days before payment due date</span>
+</div>
+<div class="relative inline-block w-12 h-6 transition duration-200 ease-in-out">
+<input class="peer opacity-0 w-0 h-0" type="checkbox"/>
+<span class="absolute cursor-pointer inset-0 rounded-full bg-outline-variant peer-checked:bg-primary transition-colors duration-200" onclick="this.previousElementSibling.click()"></span>
+<span class="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-200 peer-checked:translate-x-6" onclick="this.previousElementSibling.previousElementSibling.click()"></span>
+</div>
+</div>
+</div>
+</section>
+<!-- Currency Section -->
+<section class="flex flex-col gap-sm">
+<div class="flex items-center gap-xs px-base">
+<span class="material-symbols-outlined text-primary text-[20px]">payments</span>
+<h2 class="font-label-lg text-label-lg uppercase tracking-wider text-on-surface-variant">Regional</h2>
+</div>
+<div class="bg-surface-container-low rounded-xl p-md">
+<span class="font-title-md text-title-md text-on-surface mb-sm block">Default Currency</span>
+<div class="flex flex-wrap gap-sm">
+<button class="currency-chip px-md py-xs rounded-full bg-primary text-on-primary font-title-md text-title-md transition-colors" onclick="selectCurrency(this)">$ USD</button>
+<button class="currency-chip px-md py-xs rounded-full bg-surface-container-highest text-on-surface-variant font-title-md text-title-md transition-colors" onclick="selectCurrency(this)">PKR</button>
+<button class="currency-chip px-md py-xs rounded-full bg-surface-container-highest text-on-surface-variant font-title-md text-title-md transition-colors" onclick="selectCurrency(this)">€ EUR</button>
+<button class="currency-chip px-md py-xs rounded-full bg-surface-container-highest text-on-surface-variant font-title-md text-title-md transition-colors" onclick="selectCurrency(this)">£ GBP</button>
+</div>
+</div>
+</section>
+<!-- Data Management -->
+<section class="flex flex-col gap-sm">
+<div class="flex items-center gap-xs px-base">
+<span class="material-symbols-outlined text-primary text-[20px]">database</span>
+<h2 class="font-label-lg text-label-lg uppercase tracking-wider text-on-surface-variant">Data Management</h2>
+</div>
+<div class="grid grid-cols-1 gap-sm">
+<button class="flex items-center gap-md p-md bg-surface-container-low rounded-xl active:scale-[0.98] transition-transform">
+<div class="w-10 h-10 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined">file_download</span>
+</div>
+<div class="flex flex-col items-start">
+<span class="font-title-md text-title-md text-on-surface">Export to CSV</span>
+<span class="font-body-md text-body-md text-on-surface-variant">Download all meter readings</span>
+</div>
+</button>
+<button class="flex items-center gap-md p-md bg-surface-container-low rounded-xl active:scale-[0.98] transition-transform">
+<div class="w-10 h-10 rounded-full bg-tertiary-container text-on-tertiary-container flex items-center justify-center">
+<span class="material-symbols-outlined">cloud_upload</span>
+</div>
+<div class="flex flex-col items-start">
+<span class="font-title-md text-title-md text-on-surface">Backup to Cloud</span>
+<span class="font-body-md text-body-md text-on-surface-variant">Sync data to your MeterPulse account</span>
+</div>
+</button>
+<button class="flex items-center gap-md p-md bg-surface-container-low rounded-xl active:scale-[0.98] transition-transform">
+<div class="w-10 h-10 rounded-full bg-error-container text-on-error-container flex items-center justify-center">
+<span class="material-symbols-outlined">settings_backup_restore</span>
+</div>
+<div class="flex flex-col items-start">
+<span class="font-title-md text-title-md text-on-surface">Restore Data</span>
+<span class="font-body-md text-body-md text-on-surface-variant">Import from local or cloud backup</span>
+</div>
+</button>
+</div>
+</section>
+<!-- About Section -->
+<section class="flex flex-col gap-sm">
+<div class="flex items-center gap-xs px-base">
+<span class="material-symbols-outlined text-primary text-[20px]">info</span>
+<h2 class="font-label-lg text-label-lg uppercase tracking-wider text-on-surface-variant">About</h2>
+</div>
+<div class="bg-surface-container-low rounded-xl overflow-hidden">
+<div class="flex items-center justify-between p-md border-b border-outline-variant/10">
+<div class="flex flex-col">
+<span class="font-title-md text-title-md text-on-surface">Version</span>
+<span class="font-body-md text-body-md text-on-surface-variant">MeterPulse Stable Release</span>
+</div>
+<span class="font-label-lg text-label-lg px-sm py-xs bg-surface-container-highest text-on-surface-variant rounded">1.0.0</span>
+</div>
+<button class="w-full flex items-center justify-between p-md active:bg-surface-container transition-colors">
+<div class="flex flex-col items-start">
+<span class="font-title-md text-title-md text-on-surface">Rate App</span>
+<span class="font-body-md text-body-md text-on-surface-variant">Tell us what you think!</span>
+</div>
+<span class="material-symbols-outlined text-primary">star</span>
+</button>
+</div>
+</section>
+<!-- Empty State Character / Delight -->
+<div class="mt-md flex flex-col items-center justify-center text-center px-lg py-xl">
+<div class="w-24 h-24 mb-md opacity-20 bg-gradient-to-t from-primary/40 to-transparent rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-[48px] text-primary">done_all</span>
+</div>
+<span class="font-title-md text-title-md text-on-surface-variant italic">"Precision in every pulse."</span>
+<span class="font-body-md text-body-md text-on-surface-variant/60 mt-xs">Made with care for your home resources.</span>
+</div>
+<script>
+    function updateTheme(btn, theme) {
+      document.querySelectorAll('.theme-btn').forEach(b => {
+        b.classList.remove('bg-primary', 'text-on-primary', 'shadow-sm');
+        b.classList.add('bg-surface-container-highest', 'text-on-surface-variant');
+      });
+      btn.classList.add('bg-primary', 'text-on-primary', 'shadow-sm');
+      btn.classList.remove('bg-surface-container-highest', 'text-on-surface-variant');
+      console.log('Theme set to:', theme);
+    }
+
+    function selectCurrency(btn) {
+      document.querySelectorAll('.currency-chip').forEach(b => {
+        b.classList.remove('bg-primary', 'text-on-primary');
+        b.classList.add('bg-surface-container-highest', 'text-on-surface-variant');
+      });
+      btn.classList.add('bg-primary', 'text-on-primary');
+      btn.classList.remove('bg-surface-container-highest', 'text-on-surface-variant');
+      console.log('Currency selected:', btn.innerText);
+    }
+
+    // Ripple-like effect on list items
+    document.querySelectorAll('button').forEach(button => {
+        button.addEventListener('click', function(e) {
+            let x = e.clientX - e.target.offsetLeft;
+            let y = e.clientY - e.target.offsetTop;
+            // Native feedback handled by Tailwind 'active:' classes
+        });
+    });
+  </script>
+</div></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface/80 backdrop-blur-xl shadow-[0_-1px_8px_rgba(0,0,0,0.04)]" data-active-classes="text-primary"><div class="flex items-center justify-between px-4 h-16"><a class="flex flex-col items-center justify-center flex-1 text-on-surface-variant transition-colors" data-path="dashboard" href="#"><span class="material-symbols-outlined">dashboard</span><span class="text-[10px] font-medium">Home</span></a><a class="flex flex-col items-center justify-center flex-1 text-on-surface-variant transition-colors" data-path="analytics" href="#"><span class="material-symbols-outlined">insights</span><span class="text-[10px] font-medium">Stats</span></a><div class="flex-1 flex justify-center -mt-8"><a class="w-14 h-14 rounded-full bg-primary shadow-lg flex items-center justify-center text-on-primary" data-path="reading-capture" href="#"><span class="material-symbols-outlined text-[32px]">add_a_photo</span></a></div><a class="flex flex-col items-center justify-center flex-1 text-on-surface-variant transition-colors" data-path="bills" href="#"><span class="material-symbols-outlined">receipt_long</span><span class="text-[10px] font-medium">Bills</span></a><a aria-current="page" class="flex flex-col items-center justify-center flex-1 transition-colors text-primary" data-path="settings" href="#"><span class="material-symbols-outlined">settings</span><span class="text-[10px] font-medium">Settings</span></a></div></nav></body></html>

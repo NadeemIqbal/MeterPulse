@@ -18,6 +18,8 @@ class SettingsRepositoryImpl implements SettingsRepository {
       themeMode: model.themeMode,
       currencySymbol: model.currencySymbol ?? 'PKR',
       notificationsEnabled: model.notificationsEnabled,
+      readingRemindersEnabled: model.readingRemindersEnabled,
+      billAlertsEnabled: model.billAlertsEnabled,
       reminderTimeMinutes: model.reminderTimeMinutes,
       notificationSound: model.notificationSound,
     );
@@ -33,6 +35,8 @@ class SettingsRepositoryImpl implements SettingsRepository {
         ..themeMode = settings.themeMode
         ..currencySymbol = settings.currencySymbol
         ..notificationsEnabled = settings.notificationsEnabled
+        ..readingRemindersEnabled = settings.readingRemindersEnabled
+        ..billAlertsEnabled = settings.billAlertsEnabled
         ..reminderTimeMinutes = settings.reminderTimeMinutes
         ..notificationSound = settings.notificationSound;
       await _isar.appSettingsModels.put(model);

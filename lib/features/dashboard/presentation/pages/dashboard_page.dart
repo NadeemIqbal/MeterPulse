@@ -6,8 +6,6 @@ import '../../../../app/router/route_names.dart';
 import '../../../../core/di/service_locator.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/formatters.dart';
-import '../../../../core/widgets/app_card.dart';
-import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/error_view.dart';
 import '../../../../core/widgets/loading_view.dart';
 import '../cubit/dashboard_cubit.dart';
@@ -90,9 +88,9 @@ class _DashboardViewState extends State<_DashboardView>
           return switch (state.status) {
             DashboardStatus.loading => const LoadingView(),
             DashboardStatus.error => ErrorView(
-                message: state.error ?? 'Could not load your meters.',
-                onRetry: _reload,
-              ),
+              message: state.error ?? 'Could not load your meters.',
+              onRetry: _reload,
+            ),
             DashboardStatus.loaded =>
               state.isEmpty ? _empty(context) : _content(context, state),
           };
@@ -102,15 +100,61 @@ class _DashboardViewState extends State<_DashboardView>
   }
 
   Widget _empty(BuildContext context) {
-    return EmptyState(
-      icon: Icons.speed_rounded,
-      title: 'No meters yet',
-      message: 'Add your first meter to start tracking readings and usage.',
-      actionLabel: 'Add meter',
-      onAction: () async {
-        await context.push(RouteNames.newMeter);
-        _reload();
-      },
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer.withValues(
+                  alpha: 0.4,
+                ),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.speed_rounded,
+                size: 56,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              'No active meters yet',
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'Add your utility meters to start tracking consumption, projections, and bills.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.xl),
+            FilledButton.icon(
+              onPressed: () async {
+                await context.push(RouteNames.newMeter);
+                _reload();
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Add Your First Meter'),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            OutlinedButton.icon(
+              onPressed: () => context.read<DashboardCubit>().addDemoData(),
+              icon: const Icon(Icons.auto_awesome_rounded),
+              label: const Text('Add Sample Meters & Data'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -125,9 +169,42 @@ class _DashboardViewState extends State<_DashboardView>
           children: [
             _OverviewStrip(state: state),
             const SizedBox(height: AppSpacing.lg),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Your Meters',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    await context.push(RouteNames.meters);
+                    _reload();
+                  },
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'VIEW ALL',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      SizedBox(width: 4),
+                      Icon(Icons.chevron_right_rounded, size: 18),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xs),
           ],
         ),
-        footer: const SizedBox(height: 80), // clear the FAB
+        footer: const SizedBox(height: 90), // clear the bottom nav bar
         itemCount: summaries.length,
         onReorder: (oldIndex, newIndex) {
           context.read<DashboardCubit>().reorderSummaries(oldIndex, newIndex);
@@ -149,7 +226,7 @@ class _DashboardViewState extends State<_DashboardView>
   }
 }
 
-/// Compact "this month" overview above the meter cards.
+/// Stitch-style hero overview header with multi-color gradient and glassmorphic stats grid.
 class _OverviewStrip extends StatelessWidget {
   const _OverviewStrip({required this.state});
 
@@ -160,40 +237,198 @@ class _OverviewStrip extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final highest = state.highestConsumer;
+    final activeMeterCount = state.summaries.length;
+    final totalAlerts = state.summaries.fold<int>(
+      0,
+      (sum, s) => sum + s.alerts.length,
+    );
 
-    return AppCard(
-      color: scheme.primaryContainer,
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Total used this cycle',
-                  style: theme.textTheme.labelMedium
-                      ?.copyWith(color: scheme.onPrimaryContainer),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  Formatters.units(state.totalUnitsUsed),
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    color: scheme.onPrimaryContainer,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                if (highest != null && (highest.unitsUsed ?? 0) > 0) ...[
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    'Top: ${highest.meter.name}',
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: scheme.onPrimaryContainer),
-                  ),
-                ],
-              ],
+    // The shadow lives on an outer DecoratedBox and the rounding on an inner
+    // ClipRRect. Putting both on one Container (clipBehavior + boxShadow)
+    // clips the shadow away and leaves the whole list stuck in NEEDS-PAINT.
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0058BE).withValues(alpha: 0.25),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          width: double.infinity,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF0058BE), Color(0xFF2170E4), Color(0xFF57DFFE)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
           ),
-          Icon(Icons.insights_rounded, size: 40, color: scheme.onPrimaryContainer),
+          child: Stack(
+            children: [
+              // Background decorative icon
+              Positioned(
+                right: -16,
+                top: -16,
+                child: Icon(
+                  Icons.bolt_rounded,
+                  size: 140,
+                  color: Colors.white.withValues(alpha: 0.08),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Top row: Label + Alert Pill
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'TOTAL CONSUMPTION',
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            color: Colors.white.withValues(alpha: 0.8),
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                        if (totalAlerts > 0)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: scheme.errorContainer,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.error_outline_rounded,
+                                  size: 14,
+                                  color: scheme.onErrorContainer,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '$totalAlerts Alert${totalAlerts > 1 ? 's' : ''}',
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: scheme.onErrorContainer,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+
+                    // Large Display Number
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(
+                          Formatters.units(state.totalUnitsUsed),
+                          style: theme.textTheme.displayMedium?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        Text(
+                          'units',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+
+                    // 2-Column Glassmorphic Stats Grid
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _glassBox(
+                            context,
+                            label: 'ACTIVE METERS',
+                            value: '$activeMeterCount Units',
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: _glassBox(
+                            context,
+                            label: 'TOP CONSUMER',
+                            value:
+                                highest != null && (highest.unitsUsed ?? 0) > 0
+                                ? highest.meter.name
+                                : '—',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _glassBox(
+    BuildContext context, {
+    required String label,
+    required String value,
+  }) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.18),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: Colors.white.withValues(alpha: 0.7),
+              fontSize: 9.5,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
         ],
       ),
     );

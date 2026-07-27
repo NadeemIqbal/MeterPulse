@@ -10,11 +10,24 @@ import 'app_typography.dart';
 /// a scheme generated from [seedColor]. All shape/spacing choices reference the
 /// tokens in `app_spacing.dart` so the rounded, minimal look stays consistent.
 abstract final class AppTheme {
-  /// Brand seed used when no dynamic colour is available (Android < 12).
-  static const Color seedColor = Color(0xFF00696E);
+  /// Stitch Brand Seed Color (Deep Electric Blue).
+  static const Color seedColor = Color(0xFF0058BE);
 
-  static ThemeData light(ColorScheme? dynamicScheme) =>
-      _build(dynamicScheme ?? ColorScheme.fromSeed(seedColor: seedColor));
+  static ThemeData light(ColorScheme? dynamicScheme) {
+    final baseScheme = dynamicScheme ?? ColorScheme.fromSeed(seedColor: seedColor);
+    final stitchScheme = baseScheme.copyWith(
+      primary: const Color(0xFF0058BE),
+      primaryContainer: const Color(0xFF2170E4),
+      secondary: const Color(0xFF00687A),
+      secondaryContainer: const Color(0xFF57DFFE),
+      surface: const Color(0xFFF9F9FF),
+      surfaceContainerLow: const Color(0xFFF0F3FF),
+      surfaceContainerHighest: const Color(0xFFDCE2F3),
+      error: const Color(0xFFBA1A1A),
+      errorContainer: const Color(0xFFFFDAD6),
+    );
+    return _build(stitchScheme);
+  }
 
   static ThemeData dark(ColorScheme? dynamicScheme) => _build(
         dynamicScheme ??

@@ -35,8 +35,15 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            // Deliberately signed with the debug keystore (~/.android/debug.keystore,
+            // cert SHA-256 D1:7E:2E:...:D1:F8, valid to 2056). The app installed on
+            // real devices carries that certificate, and Android only accepts an
+            // update signed with the *same* one. Switching to a fresh keystore would
+            // fail with INSTALL_FAILED_UPDATE_INCOMPATIBLE and force an uninstall,
+            // which deletes the on-device Isar database (readings, bills, photos).
+            // Back that keystore up; losing it means no future update can be
+            // installed over an existing copy of the app. Only move to a dedicated
+            // keystore alongside a deliberate export/reinstall/import migration.
             signingConfig = signingConfigs.getByName("debug")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }

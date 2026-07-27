@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/service_locator.dart';
+import '../../../../core/error/result.dart';
 import '../../../../core/services/file_storage_service.dart';
 import '../../../../core/services/image_capture_service.dart';
 import '../../../../core/services/permission_service.dart';
@@ -51,6 +52,7 @@ class _BillFormState extends State<_BillForm> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _amount;
   late final TextEditingController _units;
+  late final TextEditingController _meterReading;
   late final TextEditingController _notes;
 
   Bill? _editingBill;
@@ -71,6 +73,8 @@ class _BillFormState extends State<_BillForm> {
     final b = _editingBill;
     _amount = TextEditingController(text: b?.billAmount.toString() ?? '');
     _units = TextEditingController(text: b?.unitsBilled?.toString() ?? '');
+    _meterReading =
+        TextEditingController(text: b?.meterReading?.toString() ?? '');
     _notes = TextEditingController(text: b?.notes ?? '');
     _billDate = b?.billDate ?? DateTime.now();
     _dueDate = b?.dueDate;
@@ -83,6 +87,7 @@ class _BillFormState extends State<_BillForm> {
   void dispose() {
     _amount.dispose();
     _units.dispose();
+    _meterReading.dispose();
     _notes.dispose();
     super.dispose();
   }
@@ -136,6 +141,28 @@ class _BillFormState extends State<_BillForm> {
                     ],
                     decoration: InputDecoration(
                       labelText: 'Units billed (optional)',
+                      helperText: 'Units consumed this period, as charged',
+                      suffixText: widget.meter.unit,
+                    ),
+                    validator: (v) {
+                      final trimmed = (v ?? '').trim();
+                      if (trimmed.isEmpty) return null;
+                      return double.tryParse(trimmed) == null
+                          ? 'Enter a valid number'
+                          : null;
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  TextFormField(
+                    controller: _meterReading,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                    ],
+                    decoration: InputDecoration(
+                      labelText: 'Meter reading on bill (optional)',
+                      helperText: 'The meter total printed on the bill',
                       suffixText: widget.meter.unit,
                     ),
                     validator: (v) {
@@ -357,6 +384,7 @@ class _BillFormState extends State<_BillForm> {
           _editingBill = duplicate;
           _amount.text = duplicate.billAmount.toString();
           _units.text = duplicate.unitsBilled?.toString() ?? '';
+          _meterReading.text = duplicate.meterReading?.toString() ?? '';
           _notes.text = duplicate.notes ?? '';
           _billDate = duplicate.billDate;
           _dueDate = duplicate.dueDate;
@@ -375,6 +403,21 @@ class _BillFormState extends State<_BillForm> {
     }
 
     final existing = _editingBill;
+
+    // Reconcile the reading before building the bill: the sync returns the id
+    // to store, which is what stops a second reading appearing on every edit.
+    int? readingId = existing?.readingId;
+    try {
+      readingId = await _syncBillReading(
+        meterReading: _parse(_meterReading.text),
+        linkedReadingId: existing?.readingId,
+      );
+    } catch (_) {
+      // Keep the existing link on failure rather than dropping it, which would
+      // orphan the reading on the next save.
+      readingId = existing?.readingId;
+    }
+
     final bill = Bill(
       id: existing?.id,
       meterId: widget.meter.id!,
@@ -383,6 +426,8 @@ class _BillFormState extends State<_BillForm> {
       billDate: _billDate,
       dueDate: _dueDate,
       unitsBilled: _parse(_units.text),
+      meterReading: _parse(_meterReading.text),
+      readingId: readingId,
       isPaid: _isPaid,
       paidDate: _isPaid ? (existing?.paidDate ?? DateTime.now()) : null,
       photoPath: photoPath,
@@ -390,33 +435,75 @@ class _BillFormState extends State<_BillForm> {
       createdAt: existing?.createdAt ?? DateTime.now(),
     );
 
-    final unitsBilled = _parse(_units.text);
-
-    if (unitsBilled != null && unitsBilled > 0) {
-      try {
-        final readingRepo = sl<ReadingRepository>();
-        final readings = await readingRepo.getReadingsForMeter(widget.meter.id!);
-        final exists = readings.any((r) =>
-            r.readingDate.year == _billDate.year &&
-            r.readingDate.month == _billDate.month &&
-            r.readingDate.day == _billDate.day);
-        if (!exists) {
-          await sl<AddReading>()(
-            reading: Reading(
-              meterId: widget.meter.id!,
-              readingValue: unitsBilled,
-              readingDate: _billDate,
-              notes: 'Bill reading for ${Formatters.date(_billDate)}',
-              createdAt: DateTime.now(),
-            ),
-            meter: widget.meter,
-          );
-        }
-      } catch (_) {}
-    }
-
     if (!mounted) return;
     await context.read<BillFormCubit>().save(bill);
+  }
+
+  /// Brings the reading this bill owns into line with [meterReading].
+  ///
+  /// A bill owns at most one reading, tracked by `Bill.readingId`. Returns the
+  /// id to persist on the bill: the same row updated in place, a newly created
+  /// one, or null when the bill no longer carries a reading.
+  ///
+  /// Updating in place matters — reusing the row's id keeps any billing cycle
+  /// that points at it via `startReadingId` valid, whereas delete-and-recreate
+  /// would leave that pointer dangling.
+  Future<int?> _syncBillReading({
+    required double? meterReading,
+    required int? linkedReadingId,
+  }) async {
+    final readingRepo = sl<ReadingRepository>();
+    final linked = linkedReadingId == null
+        ? null
+        : await readingRepo.getReading(linkedReadingId);
+
+    // Field cleared: drop the reading this bill created so a stale value stops
+    // skewing consumption.
+    if (meterReading == null || meterReading <= 0) {
+      if (linked?.id != null) await readingRepo.deleteReading(linked!.id!);
+      return null;
+    }
+
+    if (linked != null) {
+      await readingRepo.saveReading(
+        linked.copyWith(
+          readingValue: meterReading,
+          readingDate: _billDate,
+          notes: 'Bill reading for ${Formatters.date(_billDate)}',
+        ),
+      );
+      return linked.id;
+    }
+
+    // Not linked yet — either a new bill, or one saved before `readingId`
+    // existed. Adopt a same-day reading instead of stacking a duplicate on it.
+    final readings = await readingRepo.getReadingsForMeter(widget.meter.id!);
+    final sameDay = readings
+        .where((r) =>
+            r.readingDate.year == _billDate.year &&
+            r.readingDate.month == _billDate.month &&
+            r.readingDate.day == _billDate.day)
+        .firstOrNull;
+    if (sameDay?.id != null) {
+      await readingRepo
+          .saveReading(sameDay!.copyWith(readingValue: meterReading));
+      return sameDay.id;
+    }
+
+    final result = await sl<AddReading>()(
+      reading: Reading(
+        meterId: widget.meter.id!,
+        readingValue: meterReading,
+        readingDate: _billDate,
+        notes: 'Bill reading for ${Formatters.date(_billDate)}',
+        createdAt: DateTime.now(),
+      ),
+      meter: widget.meter,
+    );
+    return switch (result) {
+      Ok(:final value) => value,
+      Err() => null,
+    };
   }
 
 

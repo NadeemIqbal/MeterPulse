@@ -1,7 +1,9 @@
 import 'package:go_router/go_router.dart';
 
 import '../../features/bills/presentation/pages/add_edit_bill_page.dart';
+import '../../features/analytics/presentation/pages/global_stats_page.dart';
 import '../../features/bills/presentation/pages/bill_list_page.dart';
+import '../../features/bills/presentation/pages/global_bills_page.dart';
 import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../../features/meters/domain/entities/meter.dart';
 import '../../features/meters/presentation/pages/add_edit_meter_page.dart';
@@ -12,6 +14,7 @@ import '../../features/readings/presentation/pages/reading_history_page.dart';
 import '../../features/readings/presentation/pages/statistics_page.dart';
 import '../../features/settings/presentation/pages/about_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
+import '../../features/dashboard/presentation/widgets/main_navigation_shell.dart';
 import 'meter_resolver.dart';
 import 'route_names.dart';
 
@@ -21,17 +24,33 @@ GoRouter buildRouter() {
   return GoRouter(
     initialLocation: RouteNames.dashboard,
     routes: [
-      GoRoute(
-        path: '/',
-        builder: (context, state) => const DashboardPage(),
-      ),
-      GoRoute(
-        path: '/settings',
-        builder: (context, state) => const SettingsPage(),
+      ShellRoute(
+        builder: (context, state, child) => MainNavigationShell(
+          currentLocation: state.uri.path,
+          child: child,
+        ),
         routes: [
           GoRoute(
-            path: 'about',
-            builder: (context, state) => const AboutPage(),
+            path: '/',
+            builder: (context, state) => const DashboardPage(),
+          ),
+          GoRoute(
+            path: '/stats',
+            builder: (context, state) => const GlobalStatsPage(),
+          ),
+          GoRoute(
+            path: '/bills',
+            builder: (context, state) => const GlobalBillsPage(),
+          ),
+          GoRoute(
+            path: '/settings',
+            builder: (context, state) => const SettingsPage(),
+            routes: [
+              GoRoute(
+                path: 'about',
+                builder: (context, state) => const AboutPage(),
+              ),
+            ],
           ),
         ],
       ),

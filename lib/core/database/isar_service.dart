@@ -29,6 +29,50 @@ class IsarService {
   /// at startup before the database is opened.
   static const String pendingRestoreName = 'restore_pending.isar';
 
+  /// Filename of the one-off snapshot taken before a data repair first runs.
+  static const String preRepairSnapshotName = 'pre-repair-backup.isar';
+
+  /// Marker written when the user restores [preRepairSnapshotName].
+  ///
+  /// Restoring that snapshot brings back exactly the rows the repair removes, so
+  /// without this the repair would re-run on the very same launch and undo the
+  /// restore. Its presence means the user has deliberately opted out, and the
+  /// repair stays off for good rather than reappearing on the next launch.
+  static const String repairOptOutName = 'repair-opt-out';
+
+  /// Whether the user has opted out of the automatic repair by restoring the
+  /// pre-repair snapshot. Treated as opted-out on error, so an unreadable marker
+  /// never results in data being removed against the user's wishes.
+  static Future<bool> isRepairOptedOut() async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      return File('${dir.path}/$repairOptOutName').exists();
+    } catch (_) {
+      return true;
+    }
+  }
+
+  /// Copies the live database once, before any repair mutates it.
+  ///
+  /// A no-op when the snapshot already exists, so the file always holds the
+  /// *original* pre-repair state rather than being overwritten on later
+  /// launches. Restore it through BackupService's file picker, which stages any
+  /// `.isar` file for the next launch.
+  ///
+  /// Returns true when a usable snapshot is in place. Callers should treat false
+  /// as a reason to skip destructive work rather than proceed unprotected.
+  static Future<bool> snapshotBeforeRepair(Isar isar) async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File('${dir.path}/$preRepairSnapshotName');
+      if (await file.exists()) return true;
+      await isar.copyToFile(file.path);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   static Future<Isar> open() async {
     final existing = Isar.getInstance();
     if (existing != null) return existing;

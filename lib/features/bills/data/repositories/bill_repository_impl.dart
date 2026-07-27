@@ -21,6 +21,12 @@ class BillRepositoryImpl implements BillRepository {
   }
 
   @override
+  Future<List<Bill>> getAllBills() async {
+    final models = await _isar.billModels.where().sortByBillDateDesc().findAll();
+    return models.map(_toEntity).toList();
+  }
+
+  @override
   Future<Bill?> getLatestBill(int meterId) async {
     final model = await _isar.billModels
         .filter()
@@ -47,6 +53,16 @@ class BillRepositoryImpl implements BillRepository {
   }
 
   @override
+  Future<void> setArchived(int id, {required bool isArchived}) {
+    return _isar.writeTxn(() async {
+      final model = await _isar.billModels.get(id);
+      if (model == null) return;
+      model.isArchived = isArchived;
+      await _isar.billModels.put(model);
+    });
+  }
+
+  @override
   Future<void> deleteBill(int id) {
     return _isar.writeTxn(() => _isar.billModels.delete(id));
   }
@@ -59,10 +75,13 @@ class BillRepositoryImpl implements BillRepository {
     ..billDate = b.billDate
     ..dueDate = b.dueDate
     ..unitsBilled = b.unitsBilled
+    ..meterReading = b.meterReading
+    ..readingId = b.readingId
     ..isPaid = b.isPaid
     ..paidDate = b.paidDate
     ..photoPath = b.photoPath
     ..notes = b.notes
+    ..isArchived = b.isArchived
     ..createdAt = b.createdAt;
 
   Bill _toEntity(BillModel b) => Bill(
@@ -73,10 +92,13 @@ class BillRepositoryImpl implements BillRepository {
         billDate: b.billDate,
         dueDate: b.dueDate,
         unitsBilled: b.unitsBilled,
+        meterReading: b.meterReading,
+        readingId: b.readingId,
         isPaid: b.isPaid,
         paidDate: b.paidDate,
         photoPath: b.photoPath,
         notes: b.notes,
+        isArchived: b.isArchived,
         createdAt: b.createdAt,
       );
 }

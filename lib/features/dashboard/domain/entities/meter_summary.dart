@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 
+import '../../../../core/calculation_engine/consumption_calculator.dart';
 import '../../../analytics/domain/entities/usage_alert.dart';
 import '../../../bills/domain/entities/bill.dart';
 import '../../../billing_cycles/domain/entities/billing_cycle.dart';
@@ -24,6 +25,7 @@ class MeterSummary extends Equatable {
     this.unitsUsed,
     this.averagePerDay,
     this.projectedMonthEndUnits,
+    this.paceForecast,
     this.daysUntilReading,
     this.daysUntilBill,
     required this.readingCount,
@@ -47,6 +49,9 @@ class MeterSummary extends Equatable {
   final double? unitsUsed;
   final double? averagePerDay;
   final double? projectedMonthEndUnits;
+
+  /// Usage pace forecast and zone prediction.
+  final PaceForecast? paceForecast;
 
   /// Negative means overdue.
   final int? daysUntilReading;
@@ -77,6 +82,7 @@ class MeterSummary extends Equatable {
         unitsUsed,
         averagePerDay,
         projectedMonthEndUnits,
+        paceForecast,
         daysUntilReading,
         daysUntilBill,
         readingCount,
@@ -86,3 +92,4 @@ class MeterSummary extends Equatable {
         alerts,
       ];
 }
+

@@ -17,28 +17,38 @@ const AppSettingsModelSchema = CollectionSchema(
   name: r'AppSettingsModel',
   id: -638838212012723081,
   properties: {
-    r'currencySymbol': PropertySchema(
+    r'billAlertsEnabled': PropertySchema(
       id: 0,
+      name: r'billAlertsEnabled',
+      type: IsarType.bool,
+    ),
+    r'currencySymbol': PropertySchema(
+      id: 1,
       name: r'currencySymbol',
       type: IsarType.string,
     ),
     r'notificationSound': PropertySchema(
-      id: 1,
+      id: 2,
       name: r'notificationSound',
       type: IsarType.string,
     ),
     r'notificationsEnabled': PropertySchema(
-      id: 2,
+      id: 3,
       name: r'notificationsEnabled',
       type: IsarType.bool,
     ),
+    r'readingRemindersEnabled': PropertySchema(
+      id: 4,
+      name: r'readingRemindersEnabled',
+      type: IsarType.bool,
+    ),
     r'reminderTimeMinutes': PropertySchema(
-      id: 3,
+      id: 5,
       name: r'reminderTimeMinutes',
       type: IsarType.long,
     ),
     r'themeMode': PropertySchema(
-      id: 4,
+      id: 6,
       name: r'themeMode',
       type: IsarType.string,
       enumMap: _AppSettingsModelthemeModeEnumValueMap,
@@ -88,11 +98,13 @@ void _appSettingsModelSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeString(offsets[0], object.currencySymbol);
-  writer.writeString(offsets[1], object.notificationSound);
-  writer.writeBool(offsets[2], object.notificationsEnabled);
-  writer.writeLong(offsets[3], object.reminderTimeMinutes);
-  writer.writeString(offsets[4], object.themeMode.name);
+  writer.writeBool(offsets[0], object.billAlertsEnabled);
+  writer.writeString(offsets[1], object.currencySymbol);
+  writer.writeString(offsets[2], object.notificationSound);
+  writer.writeBool(offsets[3], object.notificationsEnabled);
+  writer.writeBool(offsets[4], object.readingRemindersEnabled);
+  writer.writeLong(offsets[5], object.reminderTimeMinutes);
+  writer.writeString(offsets[6], object.themeMode.name);
 }
 
 AppSettingsModel _appSettingsModelDeserialize(
@@ -102,14 +114,16 @@ AppSettingsModel _appSettingsModelDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = AppSettingsModel();
-  object.currencySymbol = reader.readStringOrNull(offsets[0]);
+  object.billAlertsEnabled = reader.readBoolOrNull(offsets[0]);
+  object.currencySymbol = reader.readStringOrNull(offsets[1]);
   object.id = id;
-  object.notificationSound = reader.readStringOrNull(offsets[1]);
-  object.notificationsEnabled = reader.readBoolOrNull(offsets[2]);
-  object.reminderTimeMinutes = reader.readLongOrNull(offsets[3]);
+  object.notificationSound = reader.readStringOrNull(offsets[2]);
+  object.notificationsEnabled = reader.readBoolOrNull(offsets[3]);
+  object.readingRemindersEnabled = reader.readBoolOrNull(offsets[4]);
+  object.reminderTimeMinutes = reader.readLongOrNull(offsets[5]);
   object.themeMode =
       _AppSettingsModelthemeModeValueEnumMap[reader.readStringOrNull(
-        offsets[4],
+        offsets[6],
       )] ??
       AppThemeMode.system;
   return object;
@@ -123,14 +137,18 @@ P _appSettingsModelDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readBoolOrNull(offset)) as P;
     case 1:
       return (reader.readStringOrNull(offset)) as P;
     case 2:
-      return (reader.readBoolOrNull(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 3:
-      return (reader.readLongOrNull(offset)) as P;
+      return (reader.readBoolOrNull(offset)) as P;
     case 4:
+      return (reader.readBoolOrNull(offset)) as P;
+    case 5:
+      return (reader.readLongOrNull(offset)) as P;
+    case 6:
       return (_AppSettingsModelthemeModeValueEnumMap[reader.readStringOrNull(
                 offset,
               )] ??
@@ -249,6 +267,33 @@ extension AppSettingsModelQueryWhere
 
 extension AppSettingsModelQueryFilter
     on QueryBuilder<AppSettingsModel, AppSettingsModel, QFilterCondition> {
+  QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterFilterCondition>
+  billAlertsEnabledIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'billAlertsEnabled'),
+      );
+    });
+  }
+
+  QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterFilterCondition>
+  billAlertsEnabledIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'billAlertsEnabled'),
+      );
+    });
+  }
+
+  QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterFilterCondition>
+  billAlertsEnabledEqualTo(bool? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'billAlertsEnabled', value: value),
+      );
+    });
+  }
+
   QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterFilterCondition>
   currencySymbolIsNull() {
     return QueryBuilder.apply(this, (query) {
@@ -653,6 +698,36 @@ extension AppSettingsModelQueryFilter
   }
 
   QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterFilterCondition>
+  readingRemindersEnabledIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'readingRemindersEnabled'),
+      );
+    });
+  }
+
+  QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterFilterCondition>
+  readingRemindersEnabledIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'readingRemindersEnabled'),
+      );
+    });
+  }
+
+  QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterFilterCondition>
+  readingRemindersEnabledEqualTo(bool? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'readingRemindersEnabled',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterFilterCondition>
   reminderTimeMinutesIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
@@ -876,6 +951,20 @@ extension AppSettingsModelQueryLinks
 extension AppSettingsModelQuerySortBy
     on QueryBuilder<AppSettingsModel, AppSettingsModel, QSortBy> {
   QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterSortBy>
+  sortByBillAlertsEnabled() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'billAlertsEnabled', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterSortBy>
+  sortByBillAlertsEnabledDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'billAlertsEnabled', Sort.desc);
+    });
+  }
+
+  QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterSortBy>
   sortByCurrencySymbol() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'currencySymbol', Sort.asc);
@@ -918,6 +1007,20 @@ extension AppSettingsModelQuerySortBy
   }
 
   QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterSortBy>
+  sortByReadingRemindersEnabled() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'readingRemindersEnabled', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterSortBy>
+  sortByReadingRemindersEnabledDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'readingRemindersEnabled', Sort.desc);
+    });
+  }
+
+  QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterSortBy>
   sortByReminderTimeMinutes() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'reminderTimeMinutes', Sort.asc);
@@ -948,6 +1051,20 @@ extension AppSettingsModelQuerySortBy
 
 extension AppSettingsModelQuerySortThenBy
     on QueryBuilder<AppSettingsModel, AppSettingsModel, QSortThenBy> {
+  QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterSortBy>
+  thenByBillAlertsEnabled() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'billAlertsEnabled', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterSortBy>
+  thenByBillAlertsEnabledDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'billAlertsEnabled', Sort.desc);
+    });
+  }
+
   QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterSortBy>
   thenByCurrencySymbol() {
     return QueryBuilder.apply(this, (query) {
@@ -1004,6 +1121,20 @@ extension AppSettingsModelQuerySortThenBy
   }
 
   QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterSortBy>
+  thenByReadingRemindersEnabled() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'readingRemindersEnabled', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterSortBy>
+  thenByReadingRemindersEnabledDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'readingRemindersEnabled', Sort.desc);
+    });
+  }
+
+  QueryBuilder<AppSettingsModel, AppSettingsModel, QAfterSortBy>
   thenByReminderTimeMinutes() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'reminderTimeMinutes', Sort.asc);
@@ -1035,6 +1166,13 @@ extension AppSettingsModelQuerySortThenBy
 extension AppSettingsModelQueryWhereDistinct
     on QueryBuilder<AppSettingsModel, AppSettingsModel, QDistinct> {
   QueryBuilder<AppSettingsModel, AppSettingsModel, QDistinct>
+  distinctByBillAlertsEnabled() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'billAlertsEnabled');
+    });
+  }
+
+  QueryBuilder<AppSettingsModel, AppSettingsModel, QDistinct>
   distinctByCurrencySymbol({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(
@@ -1062,6 +1200,13 @@ extension AppSettingsModelQueryWhereDistinct
   }
 
   QueryBuilder<AppSettingsModel, AppSettingsModel, QDistinct>
+  distinctByReadingRemindersEnabled() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'readingRemindersEnabled');
+    });
+  }
+
+  QueryBuilder<AppSettingsModel, AppSettingsModel, QDistinct>
   distinctByReminderTimeMinutes() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'reminderTimeMinutes');
@@ -1084,6 +1229,13 @@ extension AppSettingsModelQueryProperty
     });
   }
 
+  QueryBuilder<AppSettingsModel, bool?, QQueryOperations>
+  billAlertsEnabledProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'billAlertsEnabled');
+    });
+  }
+
   QueryBuilder<AppSettingsModel, String?, QQueryOperations>
   currencySymbolProperty() {
     return QueryBuilder.apply(this, (query) {
@@ -1102,6 +1254,13 @@ extension AppSettingsModelQueryProperty
   notificationsEnabledProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'notificationsEnabled');
+    });
+  }
+
+  QueryBuilder<AppSettingsModel, bool?, QQueryOperations>
+  readingRemindersEnabledProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'readingRemindersEnabled');
     });
   }
 

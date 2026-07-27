@@ -33,6 +33,40 @@ class BackupService {
     );
   }
 
+  /// Whether the one-off pre-repair snapshot is still on disk.
+  Future<bool> hasPreRepairSnapshot() async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      return File('${dir.path}/${IsarService.preRepairSnapshotName}').exists();
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Stages the pre-repair snapshot for restore on the next launch.
+  ///
+  /// That snapshot lives in app-private storage, which the system file picker
+  /// cannot browse, so [stageRestore] can never reach it — hence this dedicated
+  /// path. Also records an opt-out marker: the snapshot contains precisely the
+  /// rows the repair deletes, so without it the repair would run again on the
+  /// next launch and immediately undo the restore.
+  ///
+  /// Returns false when no snapshot exists.
+  Future<bool> stagePreRepairSnapshot() async {
+    final dir = await getApplicationDocumentsDirectory();
+    final snapshot =
+        File('${dir.path}/${IsarService.preRepairSnapshotName}');
+    if (!await snapshot.exists()) return false;
+
+    final staged = File('${dir.path}/${IsarService.pendingRestoreName}');
+    if (await staged.exists()) await staged.delete();
+    await snapshot.copy(staged.path);
+
+    await File('${dir.path}/${IsarService.repairOptOutName}')
+        .writeAsString('Repair declined by user.');
+    return true;
+  }
+
   /// Lets the user pick a backup file and stages it for restore. Returns true
   /// if a file was chosen; the caller must then prompt the user to restart.
   Future<bool> stageRestore() async {

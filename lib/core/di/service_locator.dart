@@ -5,7 +5,11 @@ import 'package:isar_community/isar.dart';
 
 import '../../features/bills/data/repositories/bill_repository_impl.dart';
 import '../../features/bills/domain/repositories/bill_repository.dart';
+import '../../features/analytics/domain/usecases/compute_global_stats.dart';
+import '../../features/analytics/presentation/cubit/global_stats_cubit.dart';
+import '../../features/bills/domain/usecases/compute_bills_overview.dart';
 import '../../features/bills/presentation/cubit/bill_cubit.dart';
+import '../../features/bills/presentation/cubit/global_bills_cubit.dart';
 import '../../features/bills/presentation/cubit/bill_form_cubit.dart';
 import '../../features/backup/data/backup_service.dart';
 import '../../features/billing_cycles/data/repositories/billing_cycle_repository_impl.dart';
@@ -27,6 +31,7 @@ import '../../features/settings/data/repositories/settings_repository_impl.dart'
 import '../../features/settings/domain/repositories/settings_repository.dart';
 import '../../features/settings/presentation/cubit/settings_cubit.dart';
 import '../../features/settings/presentation/cubit/theme_cubit.dart';
+import '../database/bill_reading_repair.dart';
 import '../database/isar_service.dart';
 import '../services/file_storage_service.dart';
 import '../services/image_capture_service.dart';
@@ -84,7 +89,16 @@ Future<void> configureDependencies() async {
     ..registerLazySingleton<AddReading>(
       () => AddReading(sl<ReadingRepository>(), sl<BillingCycleRepository>()),
     )
-    ..registerLazySingleton<ComputeMeterSummary>(ComputeMeterSummary.new);
+    ..registerLazySingleton<ComputeMeterSummary>(ComputeMeterSummary.new)
+    ..registerLazySingleton<ComputeBillsOverview>(ComputeBillsOverview.new)
+    ..registerLazySingleton<ComputeGlobalStats>(ComputeGlobalStats.new)
+    ..registerLazySingleton<BillReadingRepair>(
+      () => BillReadingRepair(
+        sl<BillRepository>(),
+        sl<ReadingRepository>(),
+        sl<BillingCycleRepository>(),
+      ),
+    );
 
   // --- Export / backup services ---
   sl
@@ -109,7 +123,11 @@ Future<void> configureDependencies() async {
   // Screen-scoped cubits → new instance each time they're requested.
   sl
     ..registerFactory<MeterListCubit>(
-      () => MeterListCubit(sl<MeterRepository>()),
+      () => MeterListCubit(
+        meterRepository: sl<MeterRepository>(),
+        readingRepository: sl<ReadingRepository>(),
+        cycleRepository: sl<BillingCycleRepository>(),
+      ),
     )
     ..registerFactory<MeterFormCubit>(
       () => MeterFormCubit(sl<MeterRepository>()),
@@ -143,5 +161,20 @@ Future<void> configureDependencies() async {
       ),
     )
     ..registerFactory<BillCubit>(() => BillCubit(sl<BillRepository>()))
-    ..registerFactory<BillFormCubit>(() => BillFormCubit(sl<BillRepository>()));
+    ..registerFactory<BillFormCubit>(() => BillFormCubit(sl<BillRepository>()))
+    ..registerFactory<GlobalBillsCubit>(
+      () => GlobalBillsCubit(
+        billRepository: sl<BillRepository>(),
+        meterRepository: sl<MeterRepository>(),
+        settingsRepository: sl<SettingsRepository>(),
+        compute: sl<ComputeBillsOverview>(),
+      ),
+    )
+    ..registerFactory<GlobalStatsCubit>(
+      () => GlobalStatsCubit(
+        meterRepository: sl<MeterRepository>(),
+        readingRepository: sl<ReadingRepository>(),
+        compute: sl<ComputeGlobalStats>(),
+      ),
+    );
 }

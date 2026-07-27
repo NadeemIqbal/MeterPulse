@@ -16,7 +16,14 @@ class AppSettingsModel {
   String? currencySymbol;
 
   // --- Phase 2 preferences (nullable, unused in Phase 1) ---
+  /// Legacy combined switch. Left in place as the migration fallback for the
+  /// two split flags below — never remove it without a data migration.
   bool? notificationsEnabled;
+
+  /// Null means "never set"; the entity then falls back to
+  /// [notificationsEnabled] so existing installs keep their choice.
+  bool? readingRemindersEnabled;
+  bool? billAlertsEnabled;
 
   /// Reminder time as minutes from midnight (e.g. 8am == 480).
   int? reminderTimeMinutes;

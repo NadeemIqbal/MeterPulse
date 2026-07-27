@@ -88,4 +88,43 @@ void main() {
       );
     });
   });
+
+  group('previousReadingDate', () {
+    test('returns this month when the day has already passed', () {
+      expect(
+        previousReadingDate(15, from: DateTime(2026, 7, 25)),
+        DateTime(2026, 7, 15),
+      );
+    });
+
+    test('is strictly before, so the scheduled day itself rolls back a month', () {
+      // A reading taken exactly on the scheduled day closes the cycle that
+      // opened the previous month; resolving to itself would be a zero span.
+      expect(
+        previousReadingDate(15, from: DateTime(2026, 7, 15)),
+        DateTime(2026, 6, 15),
+      );
+    });
+
+    test('rolls back a month when the day has not arrived yet', () {
+      expect(
+        previousReadingDate(15, from: DateTime(2026, 7, 10)),
+        DateTime(2026, 6, 15),
+      );
+    });
+
+    test('rolls back across a year boundary', () {
+      expect(
+        previousReadingDate(15, from: DateTime(2026, 1, 10)),
+        DateTime(2025, 12, 15),
+      );
+    });
+
+    test('clamps day 31 to the length of a short month', () {
+      expect(
+        previousReadingDate(31, from: DateTime(2026, 3, 5)),
+        DateTime(2026, 2, 28),
+      );
+    });
+  });
 }

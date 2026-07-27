@@ -3,8 +3,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/error/result.dart';
 import '../../../../core/services/notification_service.dart';
-import '../../../bills/domain/repositories/bill_repository.dart';
+import '../../../billing_cycles/domain/entities/billing_cycle.dart';
 import '../../../billing_cycles/domain/repositories/billing_cycle_repository.dart';
+import '../../../bills/domain/repositories/bill_repository.dart';
+import '../../../meters/domain/entities/meter.dart';
+import '../../../meters/domain/entities/meter_type.dart';
 import '../../../meters/domain/repositories/meter_repository.dart';
 import '../../../readings/domain/entities/reading.dart';
 import '../../../readings/domain/repositories/reading_repository.dart';
@@ -114,7 +117,7 @@ class DashboardCubit extends Cubit<DashboardState> {
   Future<void> _syncNotifications(List<MeterSummary> summaries) async {
     try {
       final settings = await _settings.getSettings();
-      if (!(settings.notificationsEnabled ?? false)) {
+      if (!settings.anyNotificationsOn) {
         await _notifications.cancelAll();
         return;
       }
@@ -123,7 +126,8 @@ class DashboardCubit extends Cubit<DashboardState> {
         final meterId = s.meter.id;
         if (meterId == null) continue;
 
-        final readingDue = s.cycle?.expectedReadingDate;
+        final readingDue =
+            settings.readingRemindersOn ? s.cycle?.expectedReadingDate : null;
         if (readingDue != null) {
           await _notifications.scheduleReadingReminder(
             meterId: meterId,
@@ -132,7 +136,7 @@ class DashboardCubit extends Cubit<DashboardState> {
           );
         }
 
-        final bill = s.latestBill;
+        final bill = settings.billAlertsOn ? s.latestBill : null;
         final billDue = (bill != null && !bill.isPaid) ? bill.dueDate : null;
         if (billDue != null) {
           await _notifications.scheduleBillReminder(
@@ -198,5 +202,89 @@ class DashboardCubit extends Cubit<DashboardState> {
     return summaries;
   }
 
+  /// Adds sample meters and readings so the user can immediately experience the app.
+  Future<void> addDemoData() async {
+    emit(const DashboardState(status: DashboardStatus.loading));
+    final now = DateTime.now();
+    final startDate = DateTime(now.year, now.month, 15);
+    final readingDate = now;
 
+    // 1. Electricity Meter
+    final elecMeter = Meter(
+      name: 'Main Electricity',
+      type: MeterType.electricity,
+      unit: 'kWh',
+      expectedReadingDayOfMonth: 15,
+      highUsageThreshold: 300,
+      createdAt: now,
+    );
+    final elecId = await _meters.saveMeter(elecMeter);
+
+    final elecCycle = BillingCycle(
+      meterId: elecId,
+      cycleStartDate: startDate,
+      expectedReadingDate: DateTime(now.year, now.month + 1, 14),
+      createdAt: now,
+    );
+    final elecCycleId = await _cycles.saveCycle(elecCycle);
+
+    await _readings.saveReading(
+      Reading(
+        meterId: elecId,
+        billingCycleId: elecCycleId,
+        readingValue: 1200.0,
+        readingDate: startDate,
+        createdAt: startDate,
+      ),
+    );
+    await _readings.saveReading(
+      Reading(
+        meterId: elecId,
+        billingCycleId: elecCycleId,
+        readingValue: 1320.0,
+        readingDate: readingDate,
+        createdAt: readingDate,
+      ),
+    );
+
+    // 2. Gas Meter
+    final gasMeter = Meter(
+      name: 'Gas Line',
+      type: MeterType.gas,
+      unit: 'm³',
+      expectedReadingDayOfMonth: 15,
+      highUsageThreshold: 100,
+      createdAt: now,
+    );
+    final gasId = await _meters.saveMeter(gasMeter);
+
+    final gasCycle = BillingCycle(
+      meterId: gasId,
+      cycleStartDate: startDate,
+      expectedReadingDate: DateTime(now.year, now.month + 1, 14),
+      createdAt: now,
+    );
+    final gasCycleId = await _cycles.saveCycle(gasCycle);
+
+    await _readings.saveReading(
+      Reading(
+        meterId: gasId,
+        billingCycleId: gasCycleId,
+        readingValue: 450.0,
+        readingDate: startDate,
+        createdAt: startDate,
+      ),
+    );
+    await _readings.saveReading(
+      Reading(
+        meterId: gasId,
+        billingCycleId: gasCycleId,
+        readingValue: 485.0,
+        readingDate: readingDate,
+        createdAt: readingDate,
+      ),
+    );
+
+    await load();
+  }
 }

@@ -19,11 +19,33 @@ class BillModel {
   late DateTime billDate;
   DateTime? dueDate;
 
-  /// Units the provider billed (may differ from calculated consumption).
+  /// Units the provider billed — a *consumption* figure for the period (e.g.
+  /// 56 kWh), which may differ from the app's calculated consumption.
   double? unitsBilled;
+
+  /// The cumulative meter reading printed on the bill (e.g. 20970).
+  ///
+  /// Purely additive and nullable, so Isar reads pre-existing rows as null
+  /// without migrating or dropping any stored bill. [unitsBilled] used to serve
+  /// double duty as this value, which broke the maths whenever a user entered
+  /// the billed units the field's label actually asked for.
+  double? meterReading;
+
+  /// Id of the reading auto-created from [meterReading], if any.
+  ///
+  /// Also additive/nullable. Gives a bill ownership of one reading so edits
+  /// update it in place instead of inserting a duplicate and orphaning the old
+  /// row. Null for bills written before this field existed.
+  int? readingId;
 
   bool isPaid = false;
   DateTime? paidDate;
+
+  /// Hidden from the default bills list without being deleted.
+  ///
+  /// Purely additive: Isar gives pre-existing rows the `false` default on read,
+  /// so adding this field does not migrate or drop any stored bill.
+  bool isArchived = false;
 
   /// Absolute path to a photo of the paper bill (no OCR in Phase 1).
   String? photoPath;

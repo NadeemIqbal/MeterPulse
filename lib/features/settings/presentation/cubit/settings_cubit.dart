@@ -17,14 +17,29 @@ class SettingsCubit extends Cubit<AppSettings> {
     emit(await _repo.getSettings());
   }
 
-  Future<void> setNotificationsEnabled(bool enabled) async {
-    if (enabled) {
+  Future<void> setReadingRemindersEnabled(bool enabled) => _setNotificationFlag(
+        state.copyWith(
+          readingRemindersEnabled: enabled,
+          notificationsEnabled: enabled || state.billAlertsOn,
+        ),
+      );
+
+  Future<void> setBillAlertsEnabled(bool enabled) => _setNotificationFlag(
+        state.copyWith(
+          billAlertsEnabled: enabled,
+          notificationsEnabled: enabled || state.readingRemindersOn,
+        ),
+      );
+
+  /// Requests permission when the first reminder kind is switched on, and
+  /// clears any scheduled notifications once both are off.
+  Future<void> _setNotificationFlag(AppSettings updated) async {
+    if (updated.anyNotificationsOn) {
       await _notifications.init();
       await _notifications.requestPermission();
     } else {
       await _notifications.cancelAll();
     }
-    final updated = state.copyWith(notificationsEnabled: enabled);
     emit(updated);
     await _repo.saveSettings(updated);
   }

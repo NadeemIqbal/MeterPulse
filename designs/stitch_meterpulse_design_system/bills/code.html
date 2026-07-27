@@ -1,0 +1,173 @@
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: 'class', theme: { extend: { colors: { 'tertiary-fixed': '#e9ddff', 'error-container': '#ffdad6', 'on-tertiary-fixed-variant': '#5516be', 'primary-container': '#2170e4', 'on-primary': '#ffffff', 'inverse-surface': '#2a313d', 'tertiary-fixed-dim': '#d0bcff', 'on-secondary-fixed-variant': '#004e5c', 'outline': '#727785', 'on-error': '#ffffff', 'on-secondary-fixed': '#001f26', 'surface-variant': '#dce2f3', 'secondary': '#00687a', 'tertiary': '#6b38d4', 'surface-dim': '#d3daea', 'surface-container-high': '#e2e8f8', 'on-secondary': '#ffffff', 'on-surface-variant': '#424754', 'on-tertiary-fixed': '#23005c', 'error': '#ba1a1a', 'surface-bright': '#f9f9ff', 'inverse-on-surface': '#ebf1ff', 'primary': '#0058be', 'outline-variant': '#c2c6d6', 'on-tertiary-container': '#fffbff', 'surface': '#f9f9ff', 'surface-container-low': '#f0f3ff', 'secondary-container': '#57dffe', 'primary-fixed-dim': '#adc6ff', 'tertiary-container': '#8455ef', 'surface-container': '#e7eefe', 'background': '#f9f9ff', 'on-surface': '#151c27', 'surface-container-lowest': '#ffffff', 'secondary-fixed-dim': '#4cd7f6', 'surface-container-highest': '#dce2f3', 'on-primary-fixed': '#001a42', 'primary-fixed': '#d8e2ff', 'on-primary-container': '#fefcff', 'on-secondary-container': '#006172', 'on-tertiary': '#ffffff', 'on-error-container': '#93000a', 'inverse-primary': '#adc6ff', 'on-background': '#151c27', 'on-primary-fixed-variant': '#004395', 'secondary-fixed': '#acedff', 'surface-tint': '#005ac2' }, borderRadius: { 'DEFAULT': '0.25rem', 'lg': '0.5rem', 'xl': '0.75rem', 'full': '9999px' }, spacing: { 'xl': '32px', 'base': '4px', 'lg': '24px', 'gutter': '20px', 'md': '16px', 'sm': '8px', 'xs': '4px', 'margin-desktop': '48px', 'margin-mobile': '16px' }, fontFamily: { 'headline-lg': ['Inter'], 'body-lg': ['Inter'], 'title-md': ['Inter'] } } } }</script><style>@layer base { body { -webkit-tap-highlight-color: transparent; scroll-behavior: smooth; } .pb-safe { padding-bottom: env(safe-area-inset-bottom); } .pt-safe { padding-top: env(safe-area-inset-top); } } .no-scrollbar::-webkit-scrollbar { display: none; }</style><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-background text-on-background min-h-screen"><header class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-xl pt-safe shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-16 px-margin-mobile flex items-center justify-between"><div class="flex items-center gap-sm"><img alt="MeterPulse Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAYRfWSrmLFDhzhwtT9_PNjOZgiuTriKHoZIpif7kGa57VmwJP4G3_rwmxgoyD8nxDAdtgJSf238pBguCeobPEvdt_pZc2GlOOZCBIGGHcVNgkRIW0YrXeVrFQ2iylX3VONeL5rCr7SRjI_CCa1Taw0AIVtfXMALKjJ33IAQh_Pon7tq1O0khPqbm6oJ5qtilW3TMuCBE-fteQZGReI4LBcc-JIXpVtgvKJ4UeIZ_Orn_zXWe6_HzGXNTFfugTLAnz-AS5C4om-S2I"/><span class="font-title-lg text-title-lg text-on-surface">MeterPulse</span></div><div class="flex items-center gap-xs"><a class="w-10 h-10 flex items-center justify-center text-on-surface-variant" data-path="manage-meters" href="#"><span class="material-symbols-outlined">settings_input_component</span></a><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center ml-xs"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="pt-16 pb-32 bg-surface min-h-screen"><div class="flex flex-col w-full px-margin-mobile gap-lg">
+<!-- Summary Header Section -->
+<section class="relative overflow-hidden rounded-xl bg-primary p-lg text-on-primary shadow-lg">
+<div class="relative z-10">
+<div class="flex items-center justify-between mb-xs">
+<span class="font-label-lg text-label-lg opacity-80 uppercase tracking-wider">Total Outstanding</span>
+<span class="material-symbols-outlined text-on-primary/30">account_balance_wallet</span>
+</div>
+<div class="flex items-baseline gap-xs mb-md">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile">$145.20</h2>
+<span class="font-body-md text-body-md opacity-90">USD</span>
+</div>
+<div class="flex items-center gap-sm bg-white/10 rounded-lg p-sm backdrop-blur-md">
+<span class="material-symbols-outlined text-[20px]">event_repeat</span>
+<p class="font-title-md text-title-md">Next bill due in 12 days</p>
+</div>
+</div>
+<!-- Decorative background elements -->
+<div class="absolute -top-12 -right-12 w-32 h-32 bg-white/10 rounded-full blur-3xl"></div>
+<div class="absolute -bottom-8 -left-8 w-24 h-24 bg-primary-container/20 rounded-full blur-2xl"></div>
+</section>
+<!-- Quick Actions / Filters -->
+<div class="flex items-center gap-sm overflow-x-auto no-scrollbar pb-xs">
+<button class="flex-none px-md py-sm bg-primary-container text-on-primary-container rounded-full font-label-lg text-label-lg">All Bills</button>
+<button class="flex-none px-md py-sm bg-surface-container text-on-surface-variant rounded-full font-label-lg text-label-lg">Unpaid</button>
+<button class="flex-none px-md py-sm bg-surface-container text-on-surface-variant rounded-full font-label-lg text-label-lg">Archived</button>
+</div>
+<!-- Bill Timeline -->
+<div class="flex flex-col gap-md">
+<h3 class="font-title-lg text-title-lg text-on-surface px-xs">Payment History</h3>
+<!-- July 2024: Paid -->
+<div class="group relative flex flex-col bg-surface-container-low rounded-xl p-md transition-all active:scale-[0.98]">
+<div class="flex justify-between items-start mb-md">
+<div>
+<h4 class="font-headline-sm text-headline-sm text-on-surface">July 2024</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">Electricity &amp; Water</p>
+</div>
+<div class="bg-secondary-container/20 text-secondary px-md py-xs rounded-full flex items-center gap-xs">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-label-lg text-label-lg uppercase">Paid</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-md mb-md">
+<div class="flex flex-col">
+<span class="font-label-lg text-label-lg text-on-surface-variant uppercase">Usage</span>
+<span class="font-title-md text-title-md text-on-surface">342 kWh</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-lg text-label-lg text-on-surface-variant uppercase">Amount</span>
+<span class="font-title-md text-title-md text-on-surface">$45.50</span>
+</div>
+</div>
+<div class="flex items-center justify-between pt-md border-t border-outline-variant/30">
+<div class="flex items-center gap-xs text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">calendar_today</span>
+<span class="font-body-md text-body-md">Due July 25, 2024</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+</div>
+</div>
+<!-- June 2024: Unpaid -->
+<div class="group relative flex flex-col bg-surface-container-low rounded-xl p-md transition-all active:scale-[0.98]">
+<div class="flex justify-between items-start mb-md">
+<div>
+<h4 class="font-headline-sm text-headline-sm text-on-surface">June 2024</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">Electricity &amp; Water</p>
+</div>
+<div class="bg-secondary-fixed/30 text-on-secondary-fixed-variant px-md py-xs rounded-full flex items-center gap-xs">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">pending</span>
+<span class="font-label-lg text-label-lg uppercase">Unpaid</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-md mb-md">
+<div class="flex flex-col">
+<span class="font-label-lg text-label-lg text-on-surface-variant uppercase">Usage</span>
+<span class="font-title-md text-title-md text-on-surface">398 kWh</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-lg text-label-lg text-on-surface-variant uppercase">Amount</span>
+<span class="font-title-md text-title-md text-on-surface">$52.00</span>
+</div>
+</div>
+<div class="flex items-center justify-between pt-md border-t border-outline-variant/30">
+<div class="flex items-center gap-xs text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">calendar_today</span>
+<span class="font-body-md text-body-md">Due June 25, 2024</span>
+</div>
+<button class="px-md py-xs bg-primary text-on-primary rounded-lg font-label-lg text-label-lg">Pay Now</button>
+</div>
+</div>
+<!-- May 2024: Overdue -->
+<div class="group relative flex flex-col bg-error-container/30 rounded-xl p-md transition-all active:scale-[0.98]">
+<div class="flex justify-between items-start mb-md">
+<div>
+<h4 class="font-headline-sm text-headline-sm text-on-surface">May 2024</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">Electricity &amp; Water</p>
+</div>
+<div class="bg-error/10 text-error px-md py-xs rounded-full flex items-center gap-xs">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">warning</span>
+<span class="font-label-lg text-label-lg uppercase">Overdue</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-md mb-md">
+<div class="flex flex-col">
+<span class="font-label-lg text-label-lg text-on-surface-variant uppercase">Usage</span>
+<span class="font-title-md text-title-md text-on-surface">365 kWh</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-lg text-label-lg text-on-surface-variant uppercase">Amount</span>
+<span class="font-title-md text-title-md text-on-surface">$48.20</span>
+</div>
+</div>
+<div class="flex items-center justify-between pt-md border-t border-error/10">
+<div class="flex items-center gap-xs text-error font-medium">
+<span class="material-symbols-outlined text-[18px]">priority_high</span>
+<span class="font-body-md text-body-md">Due May 25, 2024</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+</div>
+</div>
+</div>
+<!-- Empty State Engagement (Hidden by default, shown if no bills) -->
+<div class="hidden flex-col items-center justify-center py-xl px-lg text-center gap-md" id="empty-state">
+<div class="w-24 h-24 rounded-full bg-surface-container flex items-center justify-center">
+<span class="material-symbols-outlined text-[48px] text-on-surface-variant">receipt</span>
+</div>
+<div>
+<h4 class="font-headline-sm text-headline-sm text-on-surface">No bills yet</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">Start tracking your expenses by adding your first utility bill.</p>
+</div>
+</div>
+<!-- FAB for Adding Bill -->
+<button class="fixed bottom-24 right-margin-mobile w-14 h-14 bg-primary text-on-primary rounded-full shadow-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-transform z-50">
+<span class="material-symbols-outlined text-[28px]">add</span>
+<span class="sr-only">Add Bill</span>
+</button>
+</div>
+<script>
+  // Simple interaction to simulate a "ripple" effect or press state
+  document.querySelectorAll('.transition-all').forEach(card => {
+    card.addEventListener('click', () => {
+      card.classList.add('bg-surface-container-high');
+      setTimeout(() => {
+        card.classList.remove('bg-surface-container-high');
+      }, 150);
+    });
+  });
+
+  // Small observer for scroll animations
+  const observerOptions = {
+    threshold: 0.1
+  };
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('opacity-100', 'translate-y-0');
+        entry.target.classList.remove('opacity-0', 'translate-y-4');
+      }
+    });
+  }, observerOptions);
+
+  document.querySelectorAll('.group').forEach(card => {
+    card.classList.add('transition-all', 'duration-500', 'opacity-0', 'translate-y-4');
+    observer.observe(card);
+  });
+</script></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface/80 backdrop-blur-xl shadow-[0_-1px_8px_rgba(0,0,0,0.04)]" data-active-classes="text-primary"><div class="flex items-center justify-between px-4 h-16"><a class="flex flex-col items-center justify-center flex-1 text-on-surface-variant transition-colors" data-path="dashboard" href="#"><span class="material-symbols-outlined">dashboard</span><span class="text-[10px] font-medium">Home</span></a><a class="flex flex-col items-center justify-center flex-1 text-on-surface-variant transition-colors" data-path="analytics" href="#"><span class="material-symbols-outlined">insights</span><span class="text-[10px] font-medium">Stats</span></a><div class="flex-1 flex justify-center -mt-8"><a class="w-14 h-14 rounded-full bg-primary shadow-lg flex items-center justify-center text-on-primary" data-path="reading-capture" href="#"><span class="material-symbols-outlined text-[32px]">add_a_photo</span></a></div><a aria-current="page" class="flex flex-col items-center justify-center flex-1 transition-colors text-primary" data-path="bills" href="#"><span class="material-symbols-outlined">receipt_long</span><span class="text-[10px] font-medium">Bills</span></a><a class="flex flex-col items-center justify-center flex-1 text-on-surface-variant transition-colors" data-path="settings" href="#"><span class="material-symbols-outlined">settings</span><span class="text-[10px] font-medium">Settings</span></a></div></nav></body></html>

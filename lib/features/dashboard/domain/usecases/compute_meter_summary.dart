@@ -33,7 +33,16 @@ class ComputeMeterSummary {
         ? cycleReadings[readingCount - 2]
         : previousReadingOverride;
 
+    // [unitsUsed] and the date it is measured *from* must stay in step. When the
+    // figure comes from a fallback — a reading in the previous cycle, or the
+    // last bill — the elapsed span has to start there too. Measuring from
+    // [baseline] regardless meant a cycle holding a single reading spanned zero
+    // days, so avg/day, the month-end projection and the pace forecast all
+    // silently collapsed to null even though unitsUsed was known.
     var unitsUsed = _unitsUsed(baseline, current, meter.rolloverValue);
+    DateTime? measuredFrom =
+        (unitsUsed != null && unitsUsed > 0) ? baseline?.readingDate : null;
+
     if ((unitsUsed == null || unitsUsed == 0) &&
         current != null &&
         previous != null &&
@@ -43,27 +52,62 @@ class ComputeMeterSummary {
         previous.readingValue,
         rolloverMax: meter.rolloverValue,
       ).units;
+      measuredFrom = previous.readingDate;
     }
+    // Falls back to the meter reading printed on the last bill as this cycle's
+    // opening value. This must be `meterReading` (an absolute meter total), not
+    // `unitsBilled` (the consumption the provider charged) — the two were once
+    // the same field, so feeding billed units in here as an opening reading
+    // produced anomalies or a flat zero for every derived figure.
     if ((unitsUsed == null || unitsUsed == 0) &&
         current != null &&
-        latestBill?.unitsBilled != null &&
-        current.readingValue != latestBill!.unitsBilled) {
+        latestBill?.meterReading != null &&
+        current.readingValue != latestBill!.meterReading) {
       unitsUsed = unitsConsumed(
         current.readingValue,
-        latestBill.unitsBilled!,
+        latestBill.meterReading!,
         rolloverMax: meter.rolloverValue,
       ).units;
+      // The billed figure is this cycle's opening reading, but nothing records
+      // when it was taken: `billDate` is when the bill was keyed in, and
+      // `cycleStartDate` is when the *current* reading opened the cycle (often
+      // the same day, giving a zero span). The meter's scheduled reading day is
+      // the best available estimate, so fall back to its previous occurrence.
+      measuredFrom = previousReadingDate(
+        meter.expectedReadingDayOfMonth,
+        from: current.readingDate,
+      );
     }
+    measuredFrom ??= baseline?.readingDate;
 
+    final elapsedDays = (measuredFrom != null && current != null)
+        ? daysBetween(measuredFrom, current.readingDate)
+        : null;
 
-
-    final avgPerDay = _averagePerDay(baseline ?? previous, current, unitsUsed);
+    final avgPerDay = (unitsUsed != null && elapsedDays != null)
+        ? averagePerDay(unitsUsed, elapsedDays)
+        : null;
 
     final projected = projectedUnits(
       unitsSoFar: unitsUsed ?? 0,
       perDay: avgPerDay,
       remainingDays: daysRemainingInMonth(now),
     );
+
+    final paceForecast = (current != null &&
+            unitsUsed != null &&
+            unitsUsed > 0 &&
+            elapsedDays != null)
+        ? calculatePaceForecast(
+            unitsSoFar: unitsUsed,
+            daysElapsed: elapsedDays,
+            remainingDays: cycle?.expectedReadingDate != null
+                ? daysUntil(cycle!.expectedReadingDate!, from: current.readingDate)
+                : daysRemainingInMonth(now),
+            currentReadingDate: current.readingDate,
+            targetLimit: meter.highUsageThreshold ?? meter.expectedMonthlyUnits,
+          )
+        : null;
 
     final daysUntilReading = cycle?.expectedReadingDate == null
         ? null
@@ -91,6 +135,7 @@ class ComputeMeterSummary {
       unitsUsed: unitsUsed,
       averagePerDay: avgPerDay,
       projectedMonthEndUnits: projected,
+      paceForecast: paceForecast,
       daysUntilReading: daysUntilReading,
       daysUntilBill: daysUntilBill,
       readingCount: readingCount,
@@ -110,11 +155,6 @@ class ComputeMeterSummary {
       rolloverMax: rolloverMax,
     );
     return result.units; // null on anomaly — surfaces as "—" in the UI
-  }
-
-  double? _averagePerDay(Reading? baseline, Reading? current, double? units) {
-    if (baseline == null || current == null || units == null) return null;
-    return averagePerDay(units, daysBetween(baseline.readingDate, current.readingDate));
   }
 
   ReadingStatus _readingStatus(Meter meter, int readingCount, int? daysUntil) {

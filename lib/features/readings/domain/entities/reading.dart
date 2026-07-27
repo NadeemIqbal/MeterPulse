@@ -30,18 +30,24 @@ class Reading extends Equatable {
   final String? notes;
   final DateTime createdAt;
 
-  Reading copyWith({int? id, int? billingCycleId}) {
+  Reading copyWith({
+    int? id,
+    int? billingCycleId,
+    double? readingValue,
+    DateTime? readingDate,
+    String? notes,
+  }) {
     return Reading(
       id: id ?? this.id,
       meterId: meterId,
       billingCycleId: billingCycleId ?? this.billingCycleId,
-      readingValue: readingValue,
-      readingDate: readingDate,
+      readingValue: readingValue ?? this.readingValue,
+      readingDate: readingDate ?? this.readingDate,
       photoPath: photoPath,
       ocrConfidence: ocrConfidence,
       ocrRawText: ocrRawText,
       isManualEntry: isManualEntry,
-      notes: notes,
+      notes: notes ?? this.notes,
       createdAt: createdAt,
     );
   }

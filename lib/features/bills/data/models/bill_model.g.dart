@@ -42,21 +42,36 @@ const BillModelSchema = CollectionSchema(
       name: r'dueDate',
       type: IsarType.dateTime,
     ),
-    r'isPaid': PropertySchema(id: 5, name: r'isPaid', type: IsarType.bool),
-    r'meterId': PropertySchema(id: 6, name: r'meterId', type: IsarType.long),
-    r'notes': PropertySchema(id: 7, name: r'notes', type: IsarType.string),
-    r'paidDate': PropertySchema(
+    r'isArchived': PropertySchema(
+      id: 5,
+      name: r'isArchived',
+      type: IsarType.bool,
+    ),
+    r'isPaid': PropertySchema(id: 6, name: r'isPaid', type: IsarType.bool),
+    r'meterId': PropertySchema(id: 7, name: r'meterId', type: IsarType.long),
+    r'meterReading': PropertySchema(
       id: 8,
+      name: r'meterReading',
+      type: IsarType.double,
+    ),
+    r'notes': PropertySchema(id: 9, name: r'notes', type: IsarType.string),
+    r'paidDate': PropertySchema(
+      id: 10,
       name: r'paidDate',
       type: IsarType.dateTime,
     ),
     r'photoPath': PropertySchema(
-      id: 9,
+      id: 11,
       name: r'photoPath',
       type: IsarType.string,
     ),
+    r'readingId': PropertySchema(
+      id: 12,
+      name: r'readingId',
+      type: IsarType.long,
+    ),
     r'unitsBilled': PropertySchema(
-      id: 10,
+      id: 13,
       name: r'unitsBilled',
       type: IsarType.double,
     ),
@@ -136,12 +151,15 @@ void _billModelSerialize(
   writer.writeLong(offsets[2], object.billingCycleId);
   writer.writeDateTime(offsets[3], object.createdAt);
   writer.writeDateTime(offsets[4], object.dueDate);
-  writer.writeBool(offsets[5], object.isPaid);
-  writer.writeLong(offsets[6], object.meterId);
-  writer.writeString(offsets[7], object.notes);
-  writer.writeDateTime(offsets[8], object.paidDate);
-  writer.writeString(offsets[9], object.photoPath);
-  writer.writeDouble(offsets[10], object.unitsBilled);
+  writer.writeBool(offsets[5], object.isArchived);
+  writer.writeBool(offsets[6], object.isPaid);
+  writer.writeLong(offsets[7], object.meterId);
+  writer.writeDouble(offsets[8], object.meterReading);
+  writer.writeString(offsets[9], object.notes);
+  writer.writeDateTime(offsets[10], object.paidDate);
+  writer.writeString(offsets[11], object.photoPath);
+  writer.writeLong(offsets[12], object.readingId);
+  writer.writeDouble(offsets[13], object.unitsBilled);
 }
 
 BillModel _billModelDeserialize(
@@ -157,12 +175,15 @@ BillModel _billModelDeserialize(
   object.createdAt = reader.readDateTime(offsets[3]);
   object.dueDate = reader.readDateTimeOrNull(offsets[4]);
   object.id = id;
-  object.isPaid = reader.readBool(offsets[5]);
-  object.meterId = reader.readLong(offsets[6]);
-  object.notes = reader.readStringOrNull(offsets[7]);
-  object.paidDate = reader.readDateTimeOrNull(offsets[8]);
-  object.photoPath = reader.readStringOrNull(offsets[9]);
-  object.unitsBilled = reader.readDoubleOrNull(offsets[10]);
+  object.isArchived = reader.readBool(offsets[5]);
+  object.isPaid = reader.readBool(offsets[6]);
+  object.meterId = reader.readLong(offsets[7]);
+  object.meterReading = reader.readDoubleOrNull(offsets[8]);
+  object.notes = reader.readStringOrNull(offsets[9]);
+  object.paidDate = reader.readDateTimeOrNull(offsets[10]);
+  object.photoPath = reader.readStringOrNull(offsets[11]);
+  object.readingId = reader.readLongOrNull(offsets[12]);
+  object.unitsBilled = reader.readDoubleOrNull(offsets[13]);
   return object;
 }
 
@@ -186,14 +207,20 @@ P _billModelDeserializeProp<P>(
     case 5:
       return (reader.readBool(offset)) as P;
     case 6:
-      return (reader.readLong(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 7:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 8:
-      return (reader.readDateTimeOrNull(offset)) as P;
+      return (reader.readDoubleOrNull(offset)) as P;
     case 9:
       return (reader.readStringOrNull(offset)) as P;
     case 10:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 11:
+      return (reader.readStringOrNull(offset)) as P;
+    case 12:
+      return (reader.readLongOrNull(offset)) as P;
+    case 13:
       return (reader.readDoubleOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -940,6 +967,16 @@ extension BillModelQueryFilter
     });
   }
 
+  QueryBuilder<BillModel, BillModel, QAfterFilterCondition> isArchivedEqualTo(
+    bool value,
+  ) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'isArchived', value: value),
+      );
+    });
+  }
+
   QueryBuilder<BillModel, BillModel, QAfterFilterCondition> isPaidEqualTo(
     bool value,
   ) {
@@ -1004,6 +1041,100 @@ extension BillModelQueryFilter
           includeLower: includeLower,
           upper: upper,
           includeUpper: includeUpper,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<BillModel, BillModel, QAfterFilterCondition>
+  meterReadingIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'meterReading'),
+      );
+    });
+  }
+
+  QueryBuilder<BillModel, BillModel, QAfterFilterCondition>
+  meterReadingIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'meterReading'),
+      );
+    });
+  }
+
+  QueryBuilder<BillModel, BillModel, QAfterFilterCondition> meterReadingEqualTo(
+    double? value, {
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'meterReading',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<BillModel, BillModel, QAfterFilterCondition>
+  meterReadingGreaterThan(
+    double? value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'meterReading',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<BillModel, BillModel, QAfterFilterCondition>
+  meterReadingLessThan(
+    double? value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'meterReading',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<BillModel, BillModel, QAfterFilterCondition> meterReadingBetween(
+    double? lower,
+    double? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'meterReading',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+
+          epsilon: epsilon,
         ),
       );
     });
@@ -1412,6 +1543,80 @@ extension BillModelQueryFilter
     });
   }
 
+  QueryBuilder<BillModel, BillModel, QAfterFilterCondition> readingIdIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'readingId'),
+      );
+    });
+  }
+
+  QueryBuilder<BillModel, BillModel, QAfterFilterCondition>
+  readingIdIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'readingId'),
+      );
+    });
+  }
+
+  QueryBuilder<BillModel, BillModel, QAfterFilterCondition> readingIdEqualTo(
+    int? value,
+  ) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'readingId', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<BillModel, BillModel, QAfterFilterCondition>
+  readingIdGreaterThan(int? value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'readingId',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<BillModel, BillModel, QAfterFilterCondition> readingIdLessThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'readingId',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<BillModel, BillModel, QAfterFilterCondition> readingIdBetween(
+    int? lower,
+    int? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'readingId',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
+    });
+  }
+
   QueryBuilder<BillModel, BillModel, QAfterFilterCondition>
   unitsBilledIsNull() {
     return QueryBuilder.apply(this, (query) {
@@ -1573,6 +1778,18 @@ extension BillModelQuerySortBy on QueryBuilder<BillModel, BillModel, QSortBy> {
     });
   }
 
+  QueryBuilder<BillModel, BillModel, QAfterSortBy> sortByIsArchived() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isArchived', Sort.asc);
+    });
+  }
+
+  QueryBuilder<BillModel, BillModel, QAfterSortBy> sortByIsArchivedDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isArchived', Sort.desc);
+    });
+  }
+
   QueryBuilder<BillModel, BillModel, QAfterSortBy> sortByIsPaid() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isPaid', Sort.asc);
@@ -1594,6 +1811,18 @@ extension BillModelQuerySortBy on QueryBuilder<BillModel, BillModel, QSortBy> {
   QueryBuilder<BillModel, BillModel, QAfterSortBy> sortByMeterIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'meterId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<BillModel, BillModel, QAfterSortBy> sortByMeterReading() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'meterReading', Sort.asc);
+    });
+  }
+
+  QueryBuilder<BillModel, BillModel, QAfterSortBy> sortByMeterReadingDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'meterReading', Sort.desc);
     });
   }
 
@@ -1630,6 +1859,18 @@ extension BillModelQuerySortBy on QueryBuilder<BillModel, BillModel, QSortBy> {
   QueryBuilder<BillModel, BillModel, QAfterSortBy> sortByPhotoPathDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'photoPath', Sort.desc);
+    });
+  }
+
+  QueryBuilder<BillModel, BillModel, QAfterSortBy> sortByReadingId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'readingId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<BillModel, BillModel, QAfterSortBy> sortByReadingIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'readingId', Sort.desc);
     });
   }
 
@@ -1720,6 +1961,18 @@ extension BillModelQuerySortThenBy
     });
   }
 
+  QueryBuilder<BillModel, BillModel, QAfterSortBy> thenByIsArchived() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isArchived', Sort.asc);
+    });
+  }
+
+  QueryBuilder<BillModel, BillModel, QAfterSortBy> thenByIsArchivedDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isArchived', Sort.desc);
+    });
+  }
+
   QueryBuilder<BillModel, BillModel, QAfterSortBy> thenByIsPaid() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isPaid', Sort.asc);
@@ -1741,6 +1994,18 @@ extension BillModelQuerySortThenBy
   QueryBuilder<BillModel, BillModel, QAfterSortBy> thenByMeterIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'meterId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<BillModel, BillModel, QAfterSortBy> thenByMeterReading() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'meterReading', Sort.asc);
+    });
+  }
+
+  QueryBuilder<BillModel, BillModel, QAfterSortBy> thenByMeterReadingDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'meterReading', Sort.desc);
     });
   }
 
@@ -1777,6 +2042,18 @@ extension BillModelQuerySortThenBy
   QueryBuilder<BillModel, BillModel, QAfterSortBy> thenByPhotoPathDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'photoPath', Sort.desc);
+    });
+  }
+
+  QueryBuilder<BillModel, BillModel, QAfterSortBy> thenByReadingId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'readingId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<BillModel, BillModel, QAfterSortBy> thenByReadingIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'readingId', Sort.desc);
     });
   }
 
@@ -1825,6 +2102,12 @@ extension BillModelQueryWhereDistinct
     });
   }
 
+  QueryBuilder<BillModel, BillModel, QDistinct> distinctByIsArchived() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'isArchived');
+    });
+  }
+
   QueryBuilder<BillModel, BillModel, QDistinct> distinctByIsPaid() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'isPaid');
@@ -1834,6 +2117,12 @@ extension BillModelQueryWhereDistinct
   QueryBuilder<BillModel, BillModel, QDistinct> distinctByMeterId() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'meterId');
+    });
+  }
+
+  QueryBuilder<BillModel, BillModel, QDistinct> distinctByMeterReading() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'meterReading');
     });
   }
 
@@ -1856,6 +2145,12 @@ extension BillModelQueryWhereDistinct
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'photoPath', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<BillModel, BillModel, QDistinct> distinctByReadingId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'readingId');
     });
   }
 
@@ -1904,6 +2199,12 @@ extension BillModelQueryProperty
     });
   }
 
+  QueryBuilder<BillModel, bool, QQueryOperations> isArchivedProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'isArchived');
+    });
+  }
+
   QueryBuilder<BillModel, bool, QQueryOperations> isPaidProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'isPaid');
@@ -1913,6 +2214,12 @@ extension BillModelQueryProperty
   QueryBuilder<BillModel, int, QQueryOperations> meterIdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'meterId');
+    });
+  }
+
+  QueryBuilder<BillModel, double?, QQueryOperations> meterReadingProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'meterReading');
     });
   }
 
@@ -1931,6 +2238,12 @@ extension BillModelQueryProperty
   QueryBuilder<BillModel, String?, QQueryOperations> photoPathProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'photoPath');
+    });
+  }
+
+  QueryBuilder<BillModel, int?, QQueryOperations> readingIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'readingId');
     });
   }
 

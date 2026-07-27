@@ -12,6 +12,10 @@ abstract interface class ReadingRepository {
   /// The most recent reading for a meter, or null if none.
   Future<Reading?> getLatestReading(int meterId);
 
+  /// A single reading by id, or null if it no longer exists. Used to confirm a
+  /// bill's linked reading is still present before updating it in place.
+  Future<Reading?> getReading(int id);
+
   Future<int> saveReading(Reading reading);
 
   Future<void> deleteReading(int id);

@@ -27,6 +27,31 @@ int daysRemainingInMonth(DateTime from) =>
 int daysUntil(DateTime target, {required DateTime from}) =>
     daysBetween(from, target);
 
+/// The latest date strictly *before* [from] whose day-of-month is
+/// [dayOfMonth], clamped to each month's length.
+///
+/// The mirror of [nextReadingDate], used to recover when the current cycle
+/// nominally opened when no opening reading was recorded — e.g. the opening
+/// value came from a bill, whose stored date is when it was keyed in rather
+/// than when the meter was actually read.
+///
+/// Strictly before, so a reading taken exactly on the scheduled day resolves to
+/// the previous month's occurrence rather than to itself (a zero-day span).
+DateTime previousReadingDate(int dayOfMonth, {required DateTime from}) {
+  DateTime occurrenceIn(int year, int month) {
+    final lastDay = DateTime(year, month + 1, 0).day;
+    return DateTime(year, month, dayOfMonth.clamp(1, lastDay));
+  }
+
+  final fromDateOnly = DateTime(from.year, from.month, from.day);
+  final thisMonth = occurrenceIn(from.year, from.month);
+  if (thisMonth.isBefore(fromDateOnly)) return thisMonth;
+
+  return from.month == 1
+      ? occurrenceIn(from.year - 1, 12)
+      : occurrenceIn(from.year, from.month - 1);
+}
+
 /// The next date on or after [from] whose day-of-month is [dayOfMonth].
 ///
 /// [dayOfMonth] is clamped to each month's length, so day 31 becomes 30 in

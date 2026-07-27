@@ -194,4 +194,87 @@ void main() {
       expect(compareCycles(120, 0), isNull);
     });
   });
+
+  group('calculatePaceForecast', () {
+    final jul25 = DateTime(2026, 7, 25);
+
+    test('forecasts red zone and days to cross max when pace exceeds limit', () {
+      // 15th July to 25th July = 10 days elapsed. 100 units used (10/day).
+      // Remaining 20 days -> 300 projected units.
+      // Target limit = 250 units -> Red Zone!
+      final forecast = calculatePaceForecast(
+        unitsSoFar: 100,
+        daysElapsed: 10,
+        remainingDays: 20,
+        currentReadingDate: jul25,
+        targetLimit: 250,
+      );
+
+      expect(forecast, isNotNull);
+      expect(forecast!.dailyRate, 10.0);
+      expect(forecast.projectedUnits, 300.0);
+      expect(forecast.zone, UsageZone.red);
+      expect(forecast.percentOfLimit, 120.0);
+      expect(forecast.daysToCrossMax, 15); // (250-100)/10 = 15 days
+      expect(forecast.dateToCrossMax, DateTime(2026, 8, 9));
+      expect(forecast.isWillExceed, isTrue);
+    });
+
+    test('forecasts green zone when pace is well below limit (<=80%)', () {
+      final forecast = calculatePaceForecast(
+        unitsSoFar: 100,
+        daysElapsed: 10,
+        remainingDays: 20,
+        currentReadingDate: jul25,
+        targetLimit: 400, // 300 projected / 400 = 75%
+      );
+
+      expect(forecast, isNotNull);
+      expect(forecast!.zone, UsageZone.green);
+      expect(forecast.percentOfLimit, 75.0);
+      expect(forecast.daysToCrossMax, isNull);
+    });
+
+    test('forecasts orange zone when pace approaches limit (80%-100%)', () {
+      final forecast = calculatePaceForecast(
+        unitsSoFar: 100,
+        daysElapsed: 10,
+        remainingDays: 20,
+        currentReadingDate: jul25,
+        targetLimit: 320, // 300 projected / 320 = 93.75%
+      );
+
+      expect(forecast, isNotNull);
+      expect(forecast!.zone, UsageZone.orange);
+      expect(forecast.daysToCrossMax, isNull);
+    });
+
+    test('handles already exceeded target limit with daysToCrossMax = 0', () {
+      final forecast = calculatePaceForecast(
+        unitsSoFar: 260,
+        daysElapsed: 10,
+        remainingDays: 20,
+        currentReadingDate: jul25,
+        targetLimit: 250,
+      );
+
+      expect(forecast, isNotNull);
+      expect(forecast!.zone, UsageZone.red);
+      expect(forecast.daysToCrossMax, 0);
+      expect(forecast.dateToCrossMax, jul25);
+    });
+
+    test('returns null for non-positive days elapsed', () {
+      expect(
+        calculatePaceForecast(
+          unitsSoFar: 10,
+          daysElapsed: 0,
+          remainingDays: 20,
+          currentReadingDate: jul25,
+        ),
+        isNull,
+      );
+    });
+  });
 }
+

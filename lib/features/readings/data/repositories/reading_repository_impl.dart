@@ -50,6 +50,12 @@ class ReadingRepositoryImpl implements ReadingRepository {
 
 
   @override
+  Future<Reading?> getReading(int id) async {
+    final model = await _isar.readingModels.get(id);
+    return model == null ? null : _toEntity(model);
+  }
+
+  @override
   Future<int> saveReading(Reading reading) {
     return _isar.writeTxn(() => _isar.readingModels.put(_toModel(reading)));
   }

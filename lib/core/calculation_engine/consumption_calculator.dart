@@ -7,7 +7,9 @@
 /// (no previous reading, zero-length span, meter reset without config).
 library;
 
+export 'models/pace_forecast.dart';
 import 'models/cycle_consumption.dart';
+import 'models/pace_forecast.dart';
 
 /// How a consumption value was derived — or why it could not be.
 enum ConsumptionOutcome {
@@ -149,3 +151,68 @@ CycleComparison? compareCycles(double currentUnits, double? previousUnits) {
     percentDelta: delta / previousUnits * 100,
   );
 }
+
+/// Calculates pace forecast, usage zone (green, orange, red), and threshold crossing prediction.
+///
+/// [unitsSoFar]: units consumed so far in the current cycle.
+/// [daysElapsed]: days from cycle start (or previous bill reading) to current reading date.
+/// [remainingDays]: remaining days in the billing cycle window.
+/// [currentReadingDate]: date of the latest reading.
+/// [targetLimit]: optional max/high usage threshold (e.g. 300 kWh).
+PaceForecast? calculatePaceForecast({
+  required double unitsSoFar,
+  required int daysElapsed,
+  required int remainingDays,
+  required DateTime currentReadingDate,
+  double? targetLimit,
+}) {
+  if (daysElapsed <= 0) return null;
+  final dailyRate = averagePerDay(unitsSoFar, daysElapsed);
+  if (dailyRate == null) return null;
+
+  final projected = projectedUnits(
+    unitsSoFar: unitsSoFar,
+    perDay: dailyRate,
+    remainingDays: remainingDays,
+  ) ?? unitsSoFar;
+
+  UsageZone zone;
+  double? percentOfLimit;
+  int? daysToCrossMax;
+  DateTime? dateToCrossMax;
+
+  if (targetLimit != null && targetLimit > 0) {
+    percentOfLimit = (projected / targetLimit) * 100;
+
+    if (unitsSoFar >= targetLimit) {
+      zone = UsageZone.red;
+      daysToCrossMax = 0;
+      dateToCrossMax = currentReadingDate;
+    } else if (projected > targetLimit) {
+      zone = UsageZone.red;
+      if (dailyRate > 0) {
+        final remainingUnitsToTarget = targetLimit - unitsSoFar;
+        daysToCrossMax = (remainingUnitsToTarget / dailyRate).ceil();
+        dateToCrossMax = currentReadingDate.add(Duration(days: daysToCrossMax));
+      }
+    } else if (projected >= 0.80 * targetLimit) {
+      zone = UsageZone.orange;
+    } else {
+      zone = UsageZone.green;
+    }
+  } else {
+    // If no threshold limit is set, default zone based on reasonable pace projection
+    zone = UsageZone.green;
+  }
+
+  return PaceForecast(
+    dailyRate: dailyRate,
+    projectedUnits: projected,
+    zone: zone,
+    targetLimit: targetLimit,
+    percentOfLimit: percentOfLimit,
+    daysToCrossMax: daysToCrossMax,
+    dateToCrossMax: dateToCrossMax,
+  );
+}
+

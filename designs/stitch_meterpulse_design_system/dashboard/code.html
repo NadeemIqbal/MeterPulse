@@ -1,0 +1,198 @@
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: 'class', theme: { extend: { colors: { 'tertiary-fixed': '#e9ddff', 'error-container': '#ffdad6', 'on-tertiary-fixed-variant': '#5516be', 'primary-container': '#2170e4', 'on-primary': '#ffffff', 'inverse-surface': '#2a313d', 'tertiary-fixed-dim': '#d0bcff', 'on-secondary-fixed-variant': '#004e5c', 'outline': '#727785', 'on-error': '#ffffff', 'on-secondary-fixed': '#001f26', 'surface-variant': '#dce2f3', 'secondary': '#00687a', 'tertiary': '#6b38d4', 'surface-dim': '#d3daea', 'surface-container-high': '#e2e8f8', 'on-secondary': '#ffffff', 'on-surface-variant': '#424754', 'on-tertiary-fixed': '#23005c', 'error': '#ba1a1a', 'surface-bright': '#f9f9ff', 'inverse-on-surface': '#ebf1ff', 'primary': '#0058be', 'outline-variant': '#c2c6d6', 'on-tertiary-container': '#fffbff', 'surface': '#f9f9ff', 'surface-container-low': '#f0f3ff', 'secondary-container': '#57dffe', 'primary-fixed-dim': '#adc6ff', 'tertiary-container': '#8455ef', 'surface-container': '#e7eefe', 'background': '#f9f9ff', 'on-surface': '#151c27', 'surface-container-lowest': '#ffffff', 'secondary-fixed-dim': '#4cd7f6', 'surface-container-highest': '#dce2f3', 'on-primary-fixed': '#001a42', 'primary-fixed': '#d8e2ff', 'on-primary-container': '#fefcff', 'on-secondary-container': '#006172', 'on-tertiary': '#ffffff', 'on-error-container': '#93000a', 'inverse-primary': '#adc6ff', 'on-background': '#151c27', 'on-primary-fixed-variant': '#004395', 'secondary-fixed': '#acedff', 'surface-tint': '#005ac2' }, borderRadius: { 'DEFAULT': '0.25rem', 'lg': '0.5rem', 'xl': '0.75rem', 'full': '9999px' }, spacing: { 'xl': '32px', 'base': '4px', 'lg': '24px', 'gutter': '20px', 'md': '16px', 'sm': '8px', 'xs': '4px', 'margin-desktop': '48px', 'margin-mobile': '16px' }, fontFamily: { 'headline-lg': ['Inter'], 'body-lg': ['Inter'], 'title-md': ['Inter'] } } } }</script><style>@layer base { body { -webkit-tap-highlight-color: transparent; scroll-behavior: smooth; } .pb-safe { padding-bottom: env(safe-area-inset-bottom); } .pt-safe { padding-top: env(safe-area-inset-top); } } .no-scrollbar::-webkit-scrollbar { display: none; }</style><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-background text-on-background min-h-screen"><header class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-xl pt-safe shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-16 px-margin-mobile flex items-center justify-between"><div class="flex items-center gap-sm"><img alt="MeterPulse Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAYRfWSrmLFDhzhwtT9_PNjOZgiuTriKHoZIpif7kGa57VmwJP4G3_rwmxgoyD8nxDAdtgJSf238pBguCeobPEvdt_pZc2GlOOZCBIGGHcVNgkRIW0YrXeVrFQ2iylX3VONeL5rCr7SRjI_CCa1Taw0AIVtfXMALKjJ33IAQh_Pon7tq1O0khPqbm6oJ5qtilW3TMuCBE-fteQZGReI4LBcc-JIXpVtgvKJ4UeIZ_Orn_zXWe6_HzGXNTFfugTLAnz-AS5C4om-S2I"/><span class="font-title-lg text-title-lg text-on-surface">MeterPulse</span></div><div class="flex items-center gap-xs"><a class="w-10 h-10 flex items-center justify-center text-on-surface-variant" data-path="manage-meters" href="#"><span class="material-symbols-outlined">settings_input_component</span></a><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center ml-xs"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="pt-16 pb-32 bg-surface min-h-screen"><div class="flex flex-col w-full px-margin-mobile gap-lg">
+<!-- Hero Overview Strip -->
+<section class="relative overflow-hidden rounded-xl bg-gradient-to-br from-primary via-primary-container to-secondary-container p-lg shadow-md">
+<div class="absolute top-0 right-0 p-4 opacity-10">
+<span class="material-symbols-outlined text-[120px] rotate-12">bolt</span>
+</div>
+<div class="relative z-10 flex flex-col gap-md">
+<div class="flex justify-between items-start">
+<div class="flex flex-col">
+<span class="font-label-lg text-label-lg text-on-primary/80 uppercase tracking-wider">Total Consumption</span>
+<div class="flex items-baseline gap-xs">
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-on-primary">280.5</span>
+<span class="font-title-md text-title-md text-on-primary/90">kWh</span>
+</div>
+</div>
+<div class="bg-error-container text-on-error-container px-sm py-1 rounded-full flex items-center gap-xs shadow-sm">
+<span class="material-symbols-outlined text-[18px]">error</span>
+<span class="font-label-lg text-label-lg">1 Alert</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-sm mt-xs">
+<div class="bg-white/10 backdrop-blur-md rounded-lg p-sm border border-white/10">
+<span class="block font-label-lg text-label-lg text-on-primary/70 mb-xs">Active Meters</span>
+<span class="font-title-md text-title-md text-on-primary">2 Units</span>
+</div>
+<div class="bg-white/10 backdrop-blur-md rounded-lg p-sm border border-white/10">
+<span class="block font-label-lg text-label-lg text-on-primary/70 mb-xs">Top Consumer</span>
+<span class="font-title-md text-title-md text-on-primary truncate">Main Elec.</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Section Header -->
+<div class="flex items-center justify-between">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Your Meters</h2>
+<button class="text-primary font-label-lg text-label-lg flex items-center gap-xs">
+      VIEW ALL <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+</div>
+<!-- Meter Summary Cards -->
+<div class="flex flex-col gap-gutter">
+<!-- Card 1: Electricity -->
+<div class="bg-surface-container-lowest rounded-xl p-md shadow-sm flex flex-col gap-md relative overflow-hidden group">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-md">
+<div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[28px]">electric_bolt</span>
+</div>
+<div class="flex flex-col">
+<h3 class="font-title-lg text-title-lg text-on-surface">Main Electricity</h3>
+<span class="font-body-md text-body-md text-on-surface-variant">#123456</span>
+</div>
+</div>
+<div class="bg-secondary-container/30 text-on-secondary-container px-sm py-1 rounded-full flex items-center gap-xs">
+<span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+<span class="font-label-lg text-label-lg">On Track</span>
+</div>
+</div>
+<div class="flex flex-col gap-xs">
+<div class="flex justify-between items-end">
+<div class="flex items-baseline gap-xs">
+<span class="font-headline-md text-headline-md text-on-surface">120.0</span>
+<span class="font-body-md text-body-md text-on-surface-variant">/ 300 kWh</span>
+</div>
+<span class="font-label-lg text-label-lg text-secondary">40% used</span>
+</div>
+<div class="h-3 w-full bg-secondary/10 rounded-full overflow-hidden">
+<div class="h-full bg-secondary rounded-full w-[40%] transition-all duration-1000 ease-out"></div>
+</div>
+</div>
+<div class="bg-surface-container-low rounded-lg p-sm flex items-center gap-sm">
+<span class="material-symbols-outlined text-secondary text-[20px]">trending_flat</span>
+<p class="font-body-md text-body-md text-on-surface-variant">Pace: <span class="font-bold text-on-surface">8 kWh/day</span> · On track</p>
+</div>
+<div class="grid grid-cols-3 gap-xs border-t border-outline-variant pt-md mt-xs">
+<div class="flex flex-col">
+<span class="font-label-lg text-label-lg text-on-surface-variant uppercase text-[10px]">Avg/Day</span>
+<span class="font-title-md text-title-md text-on-surface">7.5</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-lg text-label-lg text-on-surface-variant uppercase text-[10px]">Est. Mo</span>
+<span class="font-title-md text-title-md text-on-surface">240</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-lg text-label-lg text-on-surface-variant uppercase text-[10px]">Last</span>
+<span class="font-title-md text-title-md text-on-surface">112.5</span>
+</div>
+</div>
+<div class="flex justify-between items-center pt-xs">
+<span class="font-label-lg text-label-lg text-on-surface-variant flex items-center gap-xs">
+<span class="material-symbols-outlined text-[16px]">calendar_today</span>
+          Reading in 3 days
+        </span>
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-primary-fixed-dim hover:bg-primary/5">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Card 2: Gas -->
+<div class="bg-surface-container-lowest rounded-xl p-md shadow-sm flex flex-col gap-md border-l-4 border-error relative">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-md">
+<div class="w-12 h-12 rounded-xl bg-error/10 flex items-center justify-center text-error">
+<span class="material-symbols-outlined text-[28px]">local_fire_department</span>
+</div>
+<div class="flex flex-col">
+<h3 class="font-title-lg text-title-lg text-on-surface">Home Gas</h3>
+<span class="font-body-md text-body-md text-on-surface-variant">#GAS-99</span>
+</div>
+</div>
+<div class="bg-error-container text-on-error-container px-sm py-1 rounded-full flex items-center gap-xs">
+<span class="material-symbols-outlined text-[16px]">warning</span>
+<span class="font-label-lg text-label-lg">Warning</span>
+</div>
+</div>
+<div class="flex flex-col gap-xs">
+<div class="flex justify-between items-end">
+<div class="flex items-baseline gap-xs">
+<span class="font-headline-md text-headline-md text-on-surface">245.0</span>
+<span class="font-body-md text-body-md text-on-surface-variant">/ 250 m³</span>
+</div>
+<span class="font-label-lg text-label-lg text-error font-bold">98% used</span>
+</div>
+<div class="h-3 w-full bg-error/10 rounded-full overflow-hidden">
+<div class="h-full bg-error rounded-full w-[98%] transition-all duration-1000 ease-out"></div>
+</div>
+</div>
+<div class="bg-error-container/50 rounded-lg p-sm flex items-center gap-sm">
+<span class="material-symbols-outlined text-error text-[20px]">speed</span>
+<p class="font-body-md text-body-md text-on-error-container">
+<span class="font-bold">Cross limit in 4 days</span> at current rate.
+        </p>
+</div>
+<div class="flex items-center gap-sm mt-xs">
+<button class="flex-1 bg-primary text-on-primary py-3 rounded-lg font-title-md text-title-md shadow-sm flex items-center justify-center gap-sm active:scale-95 transition-transform">
+<span class="material-symbols-outlined">add_a_photo</span>
+          Take Reading
+        </button>
+<button class="w-12 h-12 rounded-lg bg-surface-container-high flex items-center justify-center text-on-surface-variant active:bg-surface-variant">
+<span class="material-symbols-outlined">history</span>
+</button>
+<button class="w-12 h-12 rounded-lg bg-surface-container-high flex items-center justify-center text-on-surface-variant active:bg-surface-variant">
+<span class="material-symbols-outlined">insights</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Empty State Hint (Example of Delight) -->
+<div class="mt-lg p-lg rounded-2xl bg-tertiary-fixed text-on-tertiary-fixed flex flex-col items-center text-center gap-sm">
+<div class="w-16 h-16 relative">
+<div class="absolute inset-0 bg-on-tertiary-fixed/10 rounded-full animate-ping"></div>
+<div class="relative bg-on-tertiary-fixed text-tertiary-fixed-dim w-16 h-16 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-[32px]">lightbulb</span>
+</div>
+</div>
+<h4 class="font-title-lg text-title-lg">Save $45 this month?</h4>
+<p class="font-body-md text-body-md opacity-80">Reducing Peak hour (4pm-7pm) usage by just 15% could slash your next bill.</p>
+<button class="mt-xs px-lg py-2 bg-on-tertiary-fixed text-tertiary-fixed rounded-full font-label-lg text-label-lg uppercase tracking-widest">Show Tips</button>
+</div>
+<!-- Detailed Insight Image -->
+<div class="rounded-xl overflow-hidden shadow-md relative h-48 group">
+<img class="w-full h-full object-cover" data-alt="A cinematic, high-quality photograph of a modern living room interior during sunset. Warm golden light spills across the room. In the foreground, a sleek tablet displays energy usage charts, blending into the environment. The mood is calm, professional, and sustainable, featuring soft blue and deep indigo accents consistent with the MeterPulse brand identity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAU_S3428W1iRycAgYDJwqtPNznTzUJ_o0uBQmcXBXeK3OGl7lV348hUyrKKCK1LKhXRjfhwEKQdbKjuDHvIk22QS28469Bj1uzF1bdMso9dVgj3KcmW60kHqN3R4vydylmRyr6nlsSv4LwbPT7u7R_w-vtF2t-ejkQls4hEVAa8wwqMGD52fsPzupOsb_m3z4sl63Z5uvH1ng_8eGk5Q2WR7w3jb2I5KsX1zZrIgePZNcoh_YHiGHN5GO0AUgFk4ej6XZ-DRmXcps"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-md">
+<span class="text-white font-title-md text-title-md">Sustainability Report</span>
+<span class="text-white/70 font-body-md text-body-md">See your carbon footprint impact for Q3.</span>
+</div>
+</div>
+</div>
+<script>
+  // Simple micro-interaction for reading status animation
+  document.addEventListener('DOMContentLoaded', () => {
+    const bars = document.querySelectorAll('.bg-secondary, .bg-error');
+    bars.forEach(bar => {
+      const targetWidth = bar.style.width;
+      bar.style.width = '0%';
+      setTimeout(() => {
+        bar.style.width = targetWidth;
+      }, 300);
+    });
+    
+    // Ripple effect simulation on buttons
+    const buttons = document.querySelectorAll('button');
+    buttons.forEach(btn => {
+      btn.addEventListener('touchstart', function() {
+        this.classList.add('opacity-70');
+      });
+      btn.addEventListener('touchend', function() {
+        this.classList.remove('opacity-70');
+      });
+    });
+  });
+</script></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface/80 backdrop-blur-xl shadow-[0_-1px_8px_rgba(0,0,0,0.04)]" data-active-classes="text-primary"><div class="flex items-center justify-between px-4 h-16"><a aria-current="page" class="flex flex-col items-center justify-center flex-1 transition-colors text-primary" data-path="dashboard" href="#"><span class="material-symbols-outlined">dashboard</span><span class="text-[10px] font-medium">Home</span></a><a class="flex flex-col items-center justify-center flex-1 text-on-surface-variant transition-colors" data-path="analytics" href="#"><span class="material-symbols-outlined">insights</span><span class="text-[10px] font-medium">Stats</span></a><div class="flex-1 flex justify-center -mt-8"><a class="w-14 h-14 rounded-full bg-primary shadow-lg flex items-center justify-center text-on-primary" data-path="reading-capture" href="#"><span class="material-symbols-outlined text-[32px]">add_a_photo</span></a></div><a class="flex flex-col items-center justify-center flex-1 text-on-surface-variant transition-colors" data-path="bills" href="#"><span class="material-symbols-outlined">receipt_long</span><span class="text-[10px] font-medium">Bills</span></a><a class="flex flex-col items-center justify-center flex-1 text-on-surface-variant transition-colors" data-path="settings" href="#"><span class="material-symbols-outlined">settings</span><span class="text-[10px] font-medium">Settings</span></a></div></nav></body></html>
