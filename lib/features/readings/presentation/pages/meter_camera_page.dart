@@ -169,6 +169,21 @@ class _MeterCameraPageState extends State<MeterCameraPage>
     }
   }
 
+  /// Crops on a background isolate.
+  ///
+  /// Deliberately `static`. An `Isolate.run` closure written inline in `_capture`
+  /// captured `this`: a closure in an instance method shares that method's
+  /// context, and because `_capture` also touches `_controller`, `setState` and
+  /// `mounted`, the context transitively held the State object. Sending it failed
+  /// with "object is unsendable - Class: _Future … <- Instance of
+  /// '_MeterCameraPageState'", so every crop silently fell through to the inline
+  /// path and janked the UI thread. A static method has no `this` to capture.
+  static Future<Uint8List?> _cropOffThread(
+    Uint8List bytes,
+    NormalizedRoi roi,
+  ) =>
+      Isolate.run(() => cropImageToRoi(bytes, roi, expectPortrait: true));
+
   Future<void> _capture() async {
     final controller = _controller;
     if (controller == null || !controller.value.isInitialized || _capturing) {
@@ -199,9 +214,7 @@ class _MeterCameraPageState extends State<MeterCameraPage>
       // rather than an optimisation.
       Uint8List? cropped;
       try {
-        cropped = await Isolate.run(
-          () => cropImageToRoi(bytes, roi, expectPortrait: true),
-        );
+        cropped = await _cropOffThread(bytes, roi);
       } catch (e) {
         debugPrint('MeterCameraPage: crop isolate failed: $e');
       }

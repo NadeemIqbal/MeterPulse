@@ -67,13 +67,47 @@ const List<List<double>> _segmentBoxes = [
   [0.28, 0.43, 0.72, 0.57], // G
 ];
 
+/// Where the decoder decided the digit cells are.
+///
+/// Exposed so a learned classifier can reuse this localisation instead of
+/// re-deriving it. Splitting the problem that way keeps the part that is verified
+/// working — finding the digits — and replaces only the part that is weak,
+/// deciding which digit each cell holds.
+class SevenSegmentLayout {
+  const SevenSegmentLayout({
+    required this.gridLeft,
+    required this.cellWidth,
+    required this.digitCount,
+    required this.top,
+    required this.height,
+  });
+
+  /// x of the first cell's left edge, in pixels of the (orientation-baked) image.
+  final double gridLeft;
+  final double cellWidth;
+  final int digitCount;
+  final int top;
+  final int height;
+
+  /// Pixel bounds of cell [i] as (left, top, right, bottom), inclusive.
+  (int, int, int, int) cellBounds(int i) {
+    final l = (gridLeft + cellWidth * i).round();
+    final r = (gridLeft + cellWidth * (i + 1)).round() - 1;
+    return (l, top, r, top + height - 1);
+  }
+}
+
 /// Outcome of a decode attempt.
 class SevenSegmentResult {
   const SevenSegmentResult({
     required this.digits,
     required this.confidence,
     required this.value,
+    this.layout,
   });
+
+  /// The winning cell geometry, when one was found.
+  final SevenSegmentLayout? layout;
 
   /// Digits as read, left to right, leading zeros preserved.
   final String digits;
@@ -128,6 +162,103 @@ SevenSegmentResult? decodeSevenSegment(
 
   if (best == null || best.confidence < minConfidence) return null;
   return best;
+}
+
+/// Per-digit cells cut from a cropped LCD, ready for a learned classifier.
+class SevenSegmentCells {
+  const SevenSegmentCells({required this.cells, required this.layout});
+
+  /// One entry per digit, left to right. Each is [cellSize]² greyscale values
+  /// scaled to 0–1, row-major — the tensor layout the trained CNN expects.
+  final List<Float32List> cells;
+  final SevenSegmentLayout layout;
+}
+
+/// Locates the digits in [bytes] and returns them as normalised greyscale cells.
+///
+/// Localisation is delegated to the geometric decoder, whose grid search is the
+/// part of that work that holds up; only the per-digit *reading* is left to the
+/// caller. Returns null when no digit layout could be found at all, in which case
+/// there is nothing for a classifier to classify either.
+///
+/// [padFraction] mirrors the training-time crop padding. It matters: a `1` fills
+/// a fraction of its cell, so cropping tight to its ink would rescale it into
+/// something with an `8`'s stroke spacing. Training and inference must pad alike.
+SevenSegmentCells? extractDigitCells(
+  Uint8List bytes, {
+  int cellSize = 28,
+  double padFraction = 0.18,
+  bool? expectPortrait,
+}) {
+  final img.Image gray;
+  try {
+    final decoded = img.decodeImage(bytes);
+    if (decoded == null) return null;
+    gray = img.grayscale(img.bakeOrientation(decoded));
+  } catch (_) {
+    return null;
+  }
+
+  // No contrast means nothing to read. Without this a flat or near-flat image
+  // still yields a layout: every cell samples identically, uniform cells are
+  // interpreted as all-segments-lit, and the whole frame decodes as "888…".
+  // Checked here rather than relying on the confidence gate, because this
+  // function deliberately runs with a low threshold — a display too degraded for
+  // the geometric decoder is exactly the case the learned classifier is for, so
+  // low confidence must not disqualify it while genuine emptiness must.
+  var sum = 0.0;
+  var sumSq = 0.0;
+  final n = gray.width * gray.height;
+  for (var y = 0; y < gray.height; y++) {
+    for (var x = 0; x < gray.width; x++) {
+      final v = gray.getPixel(x, y).r.toDouble();
+      sum += v;
+      sumSq += v * v;
+    }
+  }
+  final mean = sum / n;
+  final variance = (sumSq / n) - mean * mean;
+  if (variance < 64) return null; // std dev < 8 of 255
+
+  final result = decodeSevenSegment(bytes, minConfidence: 0.12);
+  final layout = result?.layout;
+  if (layout == null) return null;
+
+  final cells = <Float32List>[];
+  for (var i = 0; i < layout.digitCount; i++) {
+    final (l, t, r, b) = layout.cellBounds(i);
+    final padX = ((r - l + 1) * padFraction).round();
+    final padY = ((b - t + 1) * padFraction).round();
+    final left = (l - padX).clamp(0, gray.width - 1);
+    final top = (t - padY).clamp(0, gray.height - 1);
+    final right = (r + padX).clamp(0, gray.width - 1);
+    final bottom = (b + padY).clamp(0, gray.height - 1);
+    if (right <= left || bottom <= top) return null;
+
+    final crop = img.copyResize(
+      img.copyCrop(
+        gray,
+        x: left,
+        y: top,
+        width: right - left + 1,
+        height: bottom - top + 1,
+      ),
+      width: cellSize,
+      height: cellSize,
+      interpolation: img.Interpolation.linear,
+    );
+
+    final out = Float32List(cellSize * cellSize);
+    var k = 0;
+    for (var y = 0; y < cellSize; y++) {
+      for (var x = 0; x < cellSize; x++) {
+        out[k++] = crop.getPixel(x, y).r / 255.0;
+      }
+    }
+    cells.add(out);
+  }
+
+  return SevenSegmentCells(cells: cells, layout: layout);
 }
 
 /// A binary ink mask plus the bounding box of its content.
@@ -325,6 +456,13 @@ SevenSegmentResult? _decodeMask(
             digits: text,
             confidence: confidence,
             value: value,
+            layout: SevenSegmentLayout(
+              gridLeft: gridLeft,
+              cellWidth: cellWidth,
+              digitCount: n,
+              top: mask.box.top,
+              height: mask.box.height,
+            ),
           );
         }
       }

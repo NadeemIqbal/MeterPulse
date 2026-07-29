@@ -27,7 +27,12 @@ android {
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         // ML Kit text recognition and Isar require API 23+.
-        minSdk = flutter.minSdkVersion
+        // 26, not flutter.minSdkVersion (24): tflite_flutter's native TensorFlow
+        // Lite binaries require API 26. Raising the floor is a real tradeoff —
+        // it drops Android 5–7 devices — but the seven-segment classifier is the
+        // only thing that makes meter scanning reliable, and ML Kit already
+        // required 23.
+        minSdk = 26
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

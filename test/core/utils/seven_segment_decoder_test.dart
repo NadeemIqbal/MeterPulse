@@ -167,5 +167,51 @@ void main() {
         isNull,
       );
     });
+
+    test('exposes the digit cell geometry it found', () {
+      // The learned classifier reuses this localisation instead of re-deriving
+      // it, so the layout has to be correct and exposed.
+      final result = decodeSevenSegment(renderDisplay('20981'));
+
+      expect(result?.layout, isNotNull);
+      final layout = result!.layout!;
+      expect(layout.digitCount, 5);
+      expect(layout.cellWidth, greaterThan(0));
+      expect(layout.height, greaterThan(0));
+
+      // Cells must tile left to right without overlapping.
+      var previousRight = -1;
+      for (var i = 0; i < layout.digitCount; i++) {
+        final (l, t, r, b) = layout.cellBounds(i);
+        expect(l, greaterThan(previousRight - 2));
+        expect(r, greaterThan(l));
+        expect(b, greaterThan(t));
+        previousRight = r;
+      }
+    });
+
+    test('extractDigitCells yields one normalised cell per digit', () {
+      final cells = extractDigitCells(renderDisplay('02282385'), cellSize: 28);
+
+      expect(cells, isNotNull);
+      expect(cells!.cells.length, 8);
+      for (final c in cells.cells) {
+        expect(c.length, 28 * 28);
+        // Contract with the trained model: greyscale scaled into 0..1.
+        expect(c.reduce((a, b) => a < b ? a : b), greaterThanOrEqualTo(0.0));
+        expect(c.reduce((a, b) => a > b ? a : b), lessThanOrEqualTo(1.0));
+      }
+      // Cells must differ; identical tensors would mean the crop is not moving.
+      expect(cells.cells[0], isNot(equals(cells.cells[1])));
+    });
+
+    test('extractDigitCells declines a non-display image', () {
+      final image = img.Image(width: 300, height: 100);
+      img.fill(image, color: img.ColorRgb8(120, 120, 120));
+      expect(
+        extractDigitCells(Uint8List.fromList(img.encodeJpg(image))),
+        isNull,
+      );
+    });
   });
 }

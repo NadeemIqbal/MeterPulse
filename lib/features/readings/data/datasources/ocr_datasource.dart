@@ -1,9 +1,11 @@
 import 'dart:io';
 import 'dart:isolate';
 
+import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 
 import '../../../../core/utils/number_parsing_utils.dart';
+import '../../../../core/utils/seven_segment_cnn.dart';
 import '../../../../core/utils/seven_segment_decoder.dart';
 
 /// Result of running OCR over a meter photo.
@@ -28,14 +30,21 @@ class OcrScanResult {
   final List<double> alternativeValues;
 }
 
-/// Wraps ML Kit's on-device [TextRecognizer] and extracts the most
-/// reading-like number from a captured image. Fully offline.
+/// Reads a meter value from an image, fully offline.
+///
+/// Runs three recognisers in descending order of demonstrated accuracy on
+/// seven-segment displays: the learned per-digit CNN, then the geometric decoder,
+/// then ML Kit's general text recognition as a last resort. See [scanReading].
 class OcrDatasource {
-  OcrDatasource({TextRecognizer? recognizer})
+  OcrDatasource({TextRecognizer? recognizer, SevenSegmentCnn? cnn})
       : _recognizer =
-            recognizer ?? TextRecognizer(script: TextRecognitionScript.latin);
+            recognizer ?? TextRecognizer(script: TextRecognitionScript.latin),
+        // Nullable so tests and non-Flutter contexts can opt out: loading the
+        // model needs the asset bundle, which a plain unit test has no access to.
+        _cnn = cnn ?? SevenSegmentCnn();
 
   final TextRecognizer _recognizer;
+  final SevenSegmentCnn? _cnn;
 
   /// Runs recognition on the image at [imagePath] and returns the parsed
   /// candidate. Optional meter context (unit, meterNumber, previousReadingValue)
@@ -47,11 +56,24 @@ class OcrDatasource {
     String? meterNumber,
     double? previousReadingValue,
   }) async {
-    // Seven-segment decoder first. Every meter this app targets uses a
-    // seven-segment LCD, and general text recognition is unreliable on them —
-    // measured on a real display it read 228235 from 02282385. The decoder reads
-    // segment geometry rather than glyph shapes, so when it is confident it is
-    // strictly better; when it declines, ML Kit still gets its turn below.
+    // Three recognisers, tried in descending order of demonstrated accuracy on
+    // seven-segment LCDs. Every meter this app targets uses one, and general text
+    // recognition is structurally weak on them — ML Kit read 228235 from a display
+    // showing 02282385, which is the known limit of that model class rather than a
+    // bug. So the specialised readers go first and ML Kit becomes the last resort.
+    //
+    // 1. Learned per-digit CNN: trained on degraded seven-segment images, so it
+    //    tolerates the glare and skew that shift a bar out of a fixed sampling
+    //    window.
+    final cnnResult = await _tryCnn(
+      imagePath,
+      previousReadingValue: previousReadingValue,
+      expectedDigits: expectedDigits,
+    );
+    if (cnnResult != null) return cnnResult;
+
+    // 2. Geometric decoder: no model needed and exact on clean panels, but it
+    //    samples fixed windows and so is the more brittle of the two.
     final segmentResult = await _trySevenSegment(
       imagePath,
       previousReadingValue: previousReadingValue,
@@ -96,6 +118,56 @@ class OcrDatasource {
     );
   }
 
+  /// Runs the learned classifier, returning a result only when it earns priority.
+  ///
+  /// Acceptance mirrors the geometric decoder's: a confident read wins outright,
+  /// and a middling one wins only if it agrees with the meter's history. The
+  /// threshold applies to the *weakest* digit, since one shaky cell invalidates
+  /// the whole number.
+  Future<OcrScanResult?> _tryCnn(
+    String imagePath, {
+    double? previousReadingValue,
+    int? expectedDigits,
+  }) async {
+    final cnn = _cnn;
+    if (cnn == null || cnn.isUnavailable) return null;
+    try {
+      final bytes = await File(imagePath).readAsBytes();
+      final result = await cnn.readDisplay(bytes);
+      if (result?.value == null) return null;
+
+      final value = result!.value!;
+      final digitsMatch =
+          expectedDigits == null || result.digits.length == expectedDigits;
+      final movedForwardPlausibly = previousReadingValue == null ||
+          (value >= previousReadingValue &&
+              value - previousReadingValue <= 5000);
+
+      final trustworthy = result.confidence >= 0.90 ||
+          (result.confidence >= 0.60 && movedForwardPlausibly && digitsMatch);
+      if (!trustworthy) return null;
+
+      return OcrScanResult(
+        rawText: 'cnn: ${result.digits} '
+            '(min conf ${result.confidence.toStringAsFixed(2)})',
+        value: value,
+        confidence: result.confidence,
+      );
+    } catch (e) {
+      debugPrint('OcrDatasource: CNN path failed, deferring: $e');
+      return null;
+    }
+  }
+
+  /// Decodes on a background isolate.
+  ///
+  /// `static` for the same reason as the camera page's crop helper: an
+  /// `Isolate.run` closure inside an instance method shares that method's context
+  /// and can transitively capture `this`, which is unsendable and makes the
+  /// isolate call fail at runtime. A static method has no `this` to capture.
+  static Future<SevenSegmentResult?> _decodeOffThread(Uint8List bytes) =>
+      Isolate.run(() => decodeSevenSegment(bytes));
+
   /// Runs the seven-segment decoder, returning a result only when it is worth
   /// preferring over general OCR.
   ///
@@ -111,7 +183,7 @@ class OcrDatasource {
     try {
       final bytes = await File(imagePath).readAsBytes();
       // Decoding and scanning is CPU-bound; keep it off the UI isolate.
-      final decoded = await Isolate.run(() => decodeSevenSegment(bytes));
+      final decoded = await _decodeOffThread(bytes);
       if (decoded?.value == null) return null;
 
       final value = decoded!.value!;
@@ -137,6 +209,9 @@ class OcrDatasource {
   }
 
   /// Releases native resources. Call when the recognizer is no longer needed.
-  Future<void> dispose() => _recognizer.close();
+  Future<void> dispose() async {
+    _cnn?.dispose();
+    await _recognizer.close();
+  }
 }
 
